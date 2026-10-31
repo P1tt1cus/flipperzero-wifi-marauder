@@ -8,7 +8,7 @@ bool studio_link_report(const char* output, char* report, size_t size) {
     return studio_link_report_with_features(output, report, size, &diagnostics);
 }
 
-bool studio_link_report_with_features(
+static bool parse_frame(
     const char* output, char* report, size_t size, bool* diagnostics) {
     *diagnostics = false;
     const char* json = strstr(output, "@MARAUDER:");
@@ -56,4 +56,17 @@ bool studio_link_report_with_features(
     }
     cJSON_Delete(reply);
     return valid;
+}
+
+bool studio_link_report_with_features(
+    const char* output, char* report, size_t size, bool* diagnostics) {
+    *diagnostics = false;
+    const char* frame = output;
+    while((frame = strstr(frame, "@MARAUDER:"))) {
+        if(parse_frame(frame, report, size, diagnostics)) return true;
+        const char* end = strchr(frame, '\n');
+        if(!end) break;
+        frame = end + 1;
+    }
+    return false;
 }

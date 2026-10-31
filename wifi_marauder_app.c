@@ -30,6 +30,12 @@ static void studio_home_select(uint32_t index, void* context) {
 WifiMarauderApp* wifi_marauder_app_alloc() {
     WifiMarauderApp* app = calloc(1, sizeof(WifiMarauderApp));
     atomic_init(&app->board_diagnostics, false);
+    atomic_init(&app->board_reply_seen, false);
+    atomic_init(&app->board_reply_at, 0);
+    atomic_init(&app->storage_error, false);
+    atomic_init(&app->is_writing_log, false);
+    atomic_init(&app->is_writing_pcap, false);
+    app->launch_started = wifi_marauder_now_ms();
 
     app->gui = furi_record_open(RECORD_GUI);
     app->dialogs = furi_record_open(RECORD_DIALOGS);

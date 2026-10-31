@@ -62,7 +62,8 @@ void wifi_marauder_console_output_handle_rx_data_cb(uint8_t* buf, size_t len, vo
     // Null-terminate buf and append to text box store
     buf[len] = '\0';
     furi_string_cat_printf(app->text_box_store, "%s", buf);
-    if(!app->link_summary_shown) studio_view_feed(app->studio, buf, len);
+    if(!app->link_summary_shown && studio_view_feed(app->studio, buf, len))
+        wifi_marauder_note_reply(app);
     if(!app->link_summary_shown && app->selected_tx_string &&
        strcmp(app->selected_tx_string, "protocolinfo --machine studio") == 0) {
         char report[128];
@@ -71,6 +72,8 @@ void wifi_marauder_console_output_handle_rx_data_cb(uint8_t* buf, size_t len, vo
                furi_string_get_cstr(app->text_box_store), report, sizeof(report), &diagnostics)) {
             atomic_store(&app->board_diagnostics, diagnostics);
             studio_view_report(app->studio, report);
+            wifi_marauder_note_reply(app);
+            studio_view_link_verified(app->studio, wifi_marauder_now_ms());
             app->link_summary_shown = true;
         }
     }
@@ -81,6 +84,7 @@ void wifi_marauder_console_output_handle_rx_packets_cb(uint8_t* buf, size_t len,
     WifiMarauderApp* app = context;
 
     studio_view_capture(app->studio, len);
+    if(len) wifi_marauder_note_reply(app);
     if(app->is_writing_pcap) {
         if(storage_file_write(app->capture_file, buf, len) != len) {
             app->storage_error = true;
@@ -94,10 +98,12 @@ void wifi_marauder_scene_console_output_on_enter(void* context) {
 
     app->storage_error = false;
     app->link_summary_shown = false;
-    app->console_started = furi_get_tick();
+    app->console_started = wifi_marauder_now_ms();
     studio_view_console(app->studio,
         app->script ? app->script->name : (app->selected_tx_string && strcmp(app->selected_tx_string, "protocolinfo --machine studio") == 0 ? "Check link" : (app->selected_tx_string ? app->selected_tx_string : "Console")),
         !app->focus_console_start, app->stop_on_exit || app->script != NULL);
+    studio_view_command(app->studio, NULL, false, false, app->console_started);
+    wifi_marauder_show_reply_age(app);
     if(app->is_command || app->script) {
         furi_string_reset(app->text_box_store);
         app->text_box_store_strlen = 0;
@@ -166,6 +172,13 @@ void wifi_marauder_scene_console_output_on_enter(void* context) {
             send_html = wifi_marauder_ep_read_html_file(app, &the_html, &html_size);
         }
 
+        // Start deadlines after file preparation and any storage-error dialogs.
+        app->console_started = wifi_marauder_now_ms();
+        studio_view_command(app->studio, app->selected_tx_string, app->stop_on_exit,
+                            app->script != NULL, app->console_started);
+        if(app->selected_tx_string && strcmp(app->selected_tx_string, "protocolinfo --machine studio") == 0)
+            atomic_store(&app->board_diagnostics, false);
+
         // Files and view are ready before the worker is allowed to receive.
         wifi_marauder_uart_set_handle_rx_data_cb(app->uart, wifi_marauder_console_output_handle_rx_data_cb);
         wifi_marauder_uart_set_handle_rx_pcap_cb(app->uart, wifi_marauder_console_output_handle_rx_packets_cb);
@@ -210,11 +223,29 @@ bool wifi_marauder_scene_console_output_on_event(void* context, SceneManagerEven
     bool consumed = false;
 
     if(event.type == SceneManagerEventTypeCustom) {
-        consumed = true;
+        if(event.event == 106) {
+            unsigned action = studio_view_recovery(app->studio);
+            if(action) {
+                // Join callbacks and close files before resetting any shared state.
+                wifi_marauder_scene_console_output_on_exit(app);
+                if(action == 2) {
+                    app->selected_tx_string = "protocolinfo --machine studio";
+                    app->is_command = true;
+                    app->is_custom_tx_string = false;
+                    app->stop_on_exit = false;
+                    app->focus_console_start = true;
+                }
+                wifi_marauder_scene_console_output_on_enter(app);
+            }
+        }
         consumed = true;
     } else if(event.type == SceneManagerEventTypeTick) {
-        studio_view_status(app->studio, (furi_get_tick() - app->console_started) / furi_kernel_get_tick_frequency(),
+        wifi_marauder_show_reply_age(app);
+        studio_view_status(app->studio, (wifi_marauder_now_ms() - app->console_started) / 1000,
             app->is_writing_log, app->is_writing_pcap, app->storage_error);
+        if(app->launch_check && studio_view_link_complete(app->studio) &&
+           wifi_marauder_now_ms() - atomic_load(&app->board_reply_at) >= 800)
+            scene_manager_previous_scene(app->scene_manager);
         consumed = true;
     }
 
@@ -224,6 +255,7 @@ bool wifi_marauder_scene_console_output_on_event(void* context, SceneManagerEven
 void wifi_marauder_scene_console_output_on_exit(void* context) {
     WifiMarauderApp* app = context;
     const bool ran_script = app->script != NULL;
+    app->launch_check = false;
 
     // Stop the worker before stopping any operation its final stage may have started.
     if(app->script_worker) {

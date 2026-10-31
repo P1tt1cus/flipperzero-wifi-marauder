@@ -13,7 +13,7 @@ This is P1tt1cus's maintained companion fork. Read ReadMe.md before making chang
   attached screen, battery monitor or PSRAM. Diagnostics requires a successful
   profile/capability reply; legacy LDDB firmware keeps it hidden.
 - Build using the pinned SDK/tooling in .github/workflows/build.yml. Run
-  `python3 tests/test_terminal.py` and `ufbt` for relevant app changes.
+  `python3 tests/test_terminal.py`, `python3 tests/test_studio_view.py` and `ufbt` for relevant app changes.
 - Preserve GPL licensing, upstream attribution, shared data formats, and the
   side-by-side `marauder_studio` app ID unless a task calls for migration.
 - Fetch upstream changes and review them on a separate integration branch.
@@ -22,3 +22,14 @@ This is P1tt1cus's maintained companion fork. Read ReadMe.md before making chang
   environments. Build artifacts belong in CI artifacts/releases.
 - App launch alone does not verify UART communication. Use Check link and record
   actual tests. Keep software-test results separate from hardware verification.
+
+## Connection feedback (Studio 1.2)
+
+Automatic startup Check link uses the existing protocol query. Home/console show
+last meaningful reply age; echoes and bare prompts never establish link health.
+Read `studio/command_status.c` and the README before changing deadlines or retry
+policy. Hold-OK recovery is available only after timeout/quiet state; it replays
+an exact allowlist of read-only queries or switches to Check link. It never
+replays scripts or mutations. Silence is not proof of completion/disconnection.
+The query prompt heuristic applies only to synchronous allowlisted commands.
+The installed v1.20.0 firmware lacks UART completion messages for some scans.

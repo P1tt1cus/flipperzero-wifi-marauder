@@ -69,6 +69,11 @@ struct WifiMarauderApp {
     uint8_t menu_count;
     uint8_t menu_positions[3];
     uint32_t console_started;
+    uint32_t launch_started;
+    bool launch_check_started;
+    bool launch_check;
+    atomic_bool board_reply_seen;
+    atomic_uint_least32_t board_reply_at;
     atomic_bool storage_error;
     bool link_summary_shown;
     atomic_bool board_diagnostics;
@@ -160,3 +165,18 @@ typedef enum {
     WifiMarauderAppViewWidget,
     WifiMarauderAppViewSubmenu,
 } WifiMarauderAppView;
+
+static inline uint32_t wifi_marauder_now_ms(void) {
+    return (uint32_t)((uint64_t)furi_get_tick() * 1000 / furi_kernel_get_tick_frequency());
+}
+
+static inline void wifi_marauder_note_reply(WifiMarauderApp* app) {
+    atomic_store(&app->board_reply_at, wifi_marauder_now_ms());
+    atomic_store(&app->board_reply_seen, true);
+}
+
+static inline void wifi_marauder_show_reply_age(WifiMarauderApp* app) {
+    bool seen = atomic_load(&app->board_reply_seen);
+    studio_view_reply_age(app->studio, seen,
+                          atomic_load(&app->board_reply_at));
+}
