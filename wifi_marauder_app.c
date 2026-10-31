@@ -76,6 +76,11 @@ WifiMarauderApp* wifi_marauder_app_alloc() {
         app->view_dispatcher, WifiMarauderAppViewConsoleOutput, studio_view_get_view(app->studio));
     app->text_box_store = furi_string_alloc();
     app->file_view_store = furi_string_alloc();
+    app->session_browser_path = furi_string_alloc();
+    app->session_browser = file_browser_alloc(app->session_browser_path);
+    view_dispatcher_add_view(
+        app->view_dispatcher, WifiMarauderAppViewSessionBrowser,
+        file_browser_get_view(app->session_browser));
     furi_string_reserve(app->text_box_store, WIFI_MARAUDER_TEXT_BOX_STORE_SIZE);
 
     app->text_input = wifi_text_input_alloc();
@@ -161,6 +166,7 @@ void wifi_marauder_app_free(WifiMarauderApp* app) {
 
     // Stop IRQs and join RX before destroying any callback targets.
     if(app->uart) wifi_marauder_uart_free(app->uart);
+    if(app->session_browser_active) file_browser_stop(app->session_browser);
 
     // Views
     view_dispatcher_remove_view(app->view_dispatcher, WifiMarauderAppViewVarItemList);
@@ -168,6 +174,9 @@ void wifi_marauder_app_free(WifiMarauderApp* app) {
     view_dispatcher_remove_view(app->view_dispatcher, WifiMarauderAppViewTextInput);
     view_dispatcher_remove_view(app->view_dispatcher, WifiMarauderAppViewWidget);
     view_dispatcher_remove_view(app->view_dispatcher, WifiMarauderAppViewSubmenu);
+    view_dispatcher_remove_view(app->view_dispatcher, WifiMarauderAppViewSessionBrowser);
+    file_browser_free(app->session_browser);
+    furi_string_free(app->session_browser_path);
 
     widget_free(app->widget);
     studio_view_free(app->studio);
