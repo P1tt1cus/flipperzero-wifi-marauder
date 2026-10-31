@@ -40,4 +40,5 @@ Device → Radio profile requires the `radio-au` capability from our profile.
 Read-only machine reports validate actual country, channel range/current channel,
 TX maximum and errors; an inactive radio is not AU-confirmed. Run
 `python3 tests/test_radio_report.py` along with existing checks. See ReadMe.md for
-installed hashes and hardware evidence. ESP32 AU firmware remains unflashed.
+installed hashes and hardware evidence. Paired ESP32 `studio.2-au` is installed;
+direct USB AU checks and GPIO Radio profile/Diagnostics checks pass.

@@ -105,7 +105,14 @@ Radio profile and Diagnostics correctly stay hidden. Startup reply
 `protocolinfo_8.log` is 246 bytes. Original companion MD5 remains
 `1186772e48c9b86b1356e8e22e169235`. Fresh UART replies persisted during the
 reported GPIO disconnection, so disconnected timeout/retry was not verified.
-Live AU reporting awaits direct ESP32 USB access and firmware installation.
+Paired `studio.2-au` firmware is now installed. Direct USB passive tests verified
+AU/manual channels 1–13, current channels 13 and 1, actual driver TX max17.5 dBm
+under cap20 dBm, zero errors, and correct inactive reporting after stopscan.
+GPIO startup Check link, Radio profile/Diagnostics menu entries, the Radio
+profile screen and scrolling, and Diagnostics were visually verified on Qwerty.
+The stopped radio correctly shows unavailable live readings. GPIO logs
+`protocolinfo_11.log` (692 bytes) and `radiostatus_0.log` (406 bytes) contain the
+paired Studio responses. No active RF operation was tested.
 
 ## Build and checks
 
