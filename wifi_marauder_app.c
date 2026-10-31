@@ -203,7 +203,7 @@ void wifi_marauder_app_free(WifiMarauderApp* app) {
 }
 
 int32_t wifi_marauder_app(void* p) {
-    UNUSED(p);
+    const bool open_sessions = p && strcmp((const char*)p, "sessions") == 0;
     // Disable expansion protocol to avoid interference with UART Handle
     Expansion* expansion = furi_record_open(RECORD_EXPANSION);
     expansion_disable(expansion);
@@ -226,6 +226,12 @@ int32_t wifi_marauder_app(void* p) {
     int32_t result = 0;
     if(wifi_marauder_app->uart) {
         scene_manager_next_scene(wifi_marauder_app->scene_manager, WifiMarauderSceneHome);
+        if(open_sessions) {
+            /* A file shortcut must not start a board query when returning Home. */
+            wifi_marauder_app->launch_check_started = true;
+            wifi_marauder_app->home_index = 1;
+            scene_manager_next_scene(wifi_marauder_app->scene_manager, WifiMarauderSceneSessions);
+        }
         view_dispatcher_run(wifi_marauder_app->view_dispatcher);
     } else {
         dialog_message_show_storage_error(wifi_marauder_app->dialogs, "UART is busy.\nClose other GPIO apps.");

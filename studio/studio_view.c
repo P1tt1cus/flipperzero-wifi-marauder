@@ -55,7 +55,7 @@ static void studio_draw(Canvas* canvas, void* context) {
     canvas_set_font(canvas, FontSecondary);
     if(model->home) {
         canvas_set_font(canvas, FontPrimary);
-        canvas_draw_str(canvas, 2, 9, "Marauder Studio");
+        canvas_draw_str(canvas, 2, 9, "ECHO / RADIO");
         canvas_set_font(canvas, FontSecondary);
         for(uint8_t i = 0; i < 6; i++) {
             uint8_t x = (i % 2) * 64;

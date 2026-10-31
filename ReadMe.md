@@ -1,4 +1,4 @@
-# Marauder Studio
+# Echo Radio
 
 The maintained [P1tt1cus companion fork](https://github.com/P1tt1cus/flipperzero-wifi-marauder), based on upstream
 commit `13e93181f0d515fcb858cdec555cedc5364c45ea` (v0.8.0). GPL-3.0;
@@ -15,7 +15,7 @@ workflow targets our API 87.1 profile and publishes the FAP as a CI artifact.
 
 ## Use
 
-Open **Apps → GPIO → Marauder Studio**. This is a separate FAP; the original
+Open **Apps → GPIO → Echo Radio**. This is a separate FAP; the original
 `ESP/esp32_wifi_marauder.fap` remains installed.
 
 - **Discover:** nearby-device discovery, result lists, inspection, and channel controls.
@@ -134,6 +134,16 @@ Installed 1.4 FAP MD5: `176c94ce38277de392d260d86d987217` (local/device match).
 Host sanitizer tests and the API 87.1 build pass. The new browser test covers
 queued selection, cancel/reopen, worker cleanup and return to an existing log
 viewer; it does not reproduce the original device deadlock.
+
+## Echo identity (1.5)
+
+The displayed app name is **Echo Radio**, with an ECHO / RADIO home header and
+pulse icon. The app ID, FAP path, command protocol, data directory and saved
+preferences retain their Studio-compatible values. Existing files need no
+migration. The Echo firmware's Sessions shortcut launches this FAP with the
+`sessions` argument to open the Sessions menu directly, skipping startup Check
+link; returning Home does not start a delayed query. Normal Radio launch retains
+the automatic link check. Upstream attribution remains above and below.
 
 ## Build and checks
 
