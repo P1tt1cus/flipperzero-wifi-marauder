@@ -74,12 +74,16 @@ WifiMarauderApp* wifi_marauder_app_alloc() {
     app->studio = studio_view_alloc(studio_home_select, app);
     view_dispatcher_add_view(
         app->view_dispatcher, WifiMarauderAppViewConsoleOutput, studio_view_get_view(app->studio));
+    app->dashboard = echo_dashboard_alloc();
+    view_dispatcher_add_view(
+        app->view_dispatcher, WifiMarauderAppViewDashboard, app->dashboard->view);
     app->text_box_store = furi_string_alloc();
     app->file_view_store = furi_string_alloc();
     app->session_browser_path = furi_string_alloc();
     app->session_browser = file_browser_alloc(app->session_browser_path);
     view_dispatcher_add_view(
-        app->view_dispatcher, WifiMarauderAppViewSessionBrowser,
+        app->view_dispatcher,
+        WifiMarauderAppViewSessionBrowser,
         file_browser_get_view(app->session_browser));
     furi_string_reserve(app->text_box_store, WIFI_MARAUDER_TEXT_BOX_STORE_SIZE);
 
@@ -104,7 +108,6 @@ WifiMarauderApp* wifi_marauder_app_alloc() {
     app->submenu = submenu_alloc();
     view_dispatcher_add_view(
         app->view_dispatcher, WifiMarauderAppViewSubmenu, submenu_get_view(app->submenu));
-
 
     return app;
 }
@@ -178,6 +181,8 @@ void wifi_marauder_app_free(WifiMarauderApp* app) {
     file_browser_free(app->session_browser);
     furi_string_free(app->session_browser_path);
 
+    view_dispatcher_remove_view(app->view_dispatcher, WifiMarauderAppViewDashboard);
+    echo_dashboard_free(app->dashboard);
     widget_free(app->widget);
     studio_view_free(app->studio);
     furi_string_free(app->text_box_store);
@@ -234,7 +239,8 @@ int32_t wifi_marauder_app(void* p) {
         }
         view_dispatcher_run(wifi_marauder_app->view_dispatcher);
     } else {
-        dialog_message_show_storage_error(wifi_marauder_app->dialogs, "UART is busy.\nClose other GPIO apps.");
+        dialog_message_show_storage_error(
+            wifi_marauder_app->dialogs, "UART is busy.\nClose other GPIO apps.");
         result = 1;
     }
 

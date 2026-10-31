@@ -16,6 +16,7 @@
 #include <stdatomic.h>
 #include <gui/gui.h>
 #include "studio/studio_view.h"
+#include "studio/echo_dashboard.h"
 #include <gui/view_dispatcher.h>
 #include <gui/modules/file_browser.h>
 #include <gui/scene_manager.h>
@@ -32,21 +33,21 @@
 
 #define NUM_MENU_ITEMS (33)
 
-#define WIFI_MARAUDER_TEXT_BOX_STORE_SIZE (4096)
+#define WIFI_MARAUDER_TEXT_BOX_STORE_SIZE   (4096)
 #define WIFI_MARAUDER_TEXT_INPUT_STORE_SIZE (512)
 
-#define MARAUDER_APP_FOLDER_USER "apps_data/marauder"
-#define MARAUDER_APP_FOLDER EXT_PATH(MARAUDER_APP_FOLDER_USER)
-#define MARAUDER_APP_FOLDER_HTML MARAUDER_APP_FOLDER "/html"
-#define MARAUDER_APP_FOLDER_PCAPS MARAUDER_APP_FOLDER "/pcaps"
-#define MARAUDER_APP_FOLDER_DUMPS MARAUDER_APP_FOLDER "/dumps"
-#define MARAUDER_APP_FOLDER_LOGS MARAUDER_APP_FOLDER "/logs"
-#define MARAUDER_APP_FOLDER_USER_PCAPS MARAUDER_APP_FOLDER_USER "/pcaps"
-#define MARAUDER_APP_FOLDER_USER_LOGS MARAUDER_APP_FOLDER_USER "/logs"
-#define MARAUDER_APP_FOLDER_SCRIPTS MARAUDER_APP_FOLDER "/scripts"
+#define MARAUDER_APP_FOLDER_USER            "apps_data/marauder"
+#define MARAUDER_APP_FOLDER                 EXT_PATH(MARAUDER_APP_FOLDER_USER)
+#define MARAUDER_APP_FOLDER_HTML            MARAUDER_APP_FOLDER "/html"
+#define MARAUDER_APP_FOLDER_PCAPS           MARAUDER_APP_FOLDER "/pcaps"
+#define MARAUDER_APP_FOLDER_DUMPS           MARAUDER_APP_FOLDER "/dumps"
+#define MARAUDER_APP_FOLDER_LOGS            MARAUDER_APP_FOLDER "/logs"
+#define MARAUDER_APP_FOLDER_USER_PCAPS      MARAUDER_APP_FOLDER_USER "/pcaps"
+#define MARAUDER_APP_FOLDER_USER_LOGS       MARAUDER_APP_FOLDER_USER "/logs"
+#define MARAUDER_APP_FOLDER_SCRIPTS         MARAUDER_APP_FOLDER "/scripts"
 #define MARAUDER_APP_SCRIPT_PATH(file_name) MARAUDER_APP_FOLDER_SCRIPTS "/" file_name ".json"
-#define SAVE_PCAP_SETTING_FILEPATH MARAUDER_APP_FOLDER "/save_pcaps_here.setting"
-#define SAVE_LOGS_SETTING_FILEPATH MARAUDER_APP_FOLDER "/save_logs_here.setting"
+#define SAVE_PCAP_SETTING_FILEPATH          MARAUDER_APP_FOLDER "/save_pcaps_here.setting"
+#define SAVE_LOGS_SETTING_FILEPATH          MARAUDER_APP_FOLDER "/save_logs_here.setting"
 
 typedef enum WifiMarauderUserInputType {
     WifiMarauderUserInputTypeString,
@@ -64,6 +65,7 @@ struct WifiMarauderApp {
     FuriString* file_view_store;
     size_t text_box_store_strlen;
     StudioView* studio;
+    EchoDashboard* dashboard;
     uint8_t home_index;
     uint8_t menu_group;
     uint8_t menu_map[NUM_MENU_ITEMS];
@@ -174,6 +176,7 @@ typedef enum {
     WifiMarauderAppViewWidget,
     WifiMarauderAppViewSubmenu,
     WifiMarauderAppViewSessionBrowser,
+    WifiMarauderAppViewDashboard,
 } WifiMarauderAppView;
 
 static inline uint32_t wifi_marauder_now_ms(void) {
@@ -187,6 +190,5 @@ static inline void wifi_marauder_note_reply(WifiMarauderApp* app) {
 
 static inline void wifi_marauder_show_reply_age(WifiMarauderApp* app) {
     bool seen = atomic_load(&app->board_reply_seen);
-    studio_view_reply_age(app->studio, seen,
-                          atomic_load(&app->board_reply_at));
+    studio_view_reply_age(app->studio, seen, atomic_load(&app->board_reply_at));
 }

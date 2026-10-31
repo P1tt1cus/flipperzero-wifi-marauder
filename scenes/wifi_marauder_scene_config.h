@@ -1,4 +1,5 @@
 ADD_SCENE(wifi_marauder, home, Home)
+ADD_SCENE(wifi_marauder, more, More)
 ADD_SCENE(wifi_marauder, sessions, Sessions)
 ADD_SCENE(wifi_marauder, session_browser, SessionBrowser)
 ADD_SCENE(wifi_marauder, session_info, SessionInfo)
