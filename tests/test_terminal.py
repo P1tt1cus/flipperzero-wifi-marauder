@@ -68,5 +68,5 @@ with tempfile.TemporaryDirectory() as temporary:
     source.write_text(TEST)
     subprocess.run(['cc', '-std=c11', '-Wall', '-Wextra', '-Werror', '-Wno-deprecated-declarations', '-fsanitize=address,undefined',
                     '-I', str(ROOT / 'studio'), str(source), str(ROOT / 'studio/terminal.c'), str(ROOT / 'studio/link_report.c'), str(ROOT / 'script/cJSON.c'),
-                    '-o', str(binary)], check=True)
+                    '-o', str(binary), '-lm'], check=True)
     subprocess.run([str(binary)], check=True)
