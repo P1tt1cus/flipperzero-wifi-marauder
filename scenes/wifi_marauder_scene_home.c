@@ -2,13 +2,30 @@
 
 void wifi_marauder_scene_home_on_enter(void* context) {
     WifiMarauderApp* app = context;
+    wifi_marauder_show_reply_age(app);
     studio_view_home(app->studio, app->home_index, app->ok_to_save_logs, app->ok_to_save_pcaps);
     view_dispatcher_switch_to_view(app->view_dispatcher, WifiMarauderAppViewConsoleOutput);
 }
 
 bool wifi_marauder_scene_home_on_event(void* context, SceneManagerEvent event) {
     WifiMarauderApp* app = context;
+    if(event.type == SceneManagerEventTypeTick) {
+        wifi_marauder_show_reply_age(app);
+        /* Let the board boot after GPIO power-up; navigation can skip this check. */
+        if(!app->launch_check_started && wifi_marauder_now_ms() - app->launch_started >= 1500) {
+            app->launch_check_started = true;
+            app->launch_check = true;
+            app->selected_tx_string = "protocolinfo --machine studio";
+            app->is_command = true;
+            app->is_custom_tx_string = false;
+            app->stop_on_exit = false;
+            app->focus_console_start = true;
+            scene_manager_next_scene(app->scene_manager, WifiMarauderSceneConsoleOutput);
+        }
+        return true;
+    }
     if(event.type == SceneManagerEventTypeCustom && event.event >= 100 && event.event < 106) {
+        app->launch_check_started = true;
         app->home_index = event.event - 100;
         switch(app->home_index) {
         case 0:

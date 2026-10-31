@@ -8,13 +8,92 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 TEST = r'''
 #include "terminal.h"
 #include "link_report.h"
+#include "command_status.h"
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+static bool response(StudioCommandStatus* s, const char* text, uint32_t now) {
+    return studio_command_feed(s, (const uint8_t*)text, strlen(text), now);
+}
+static void test_command_status(void) {
+    StudioCommandStatus s;
+    studio_command_begin(&s, "protocolinfo --machine studio", false, false, 100);
+    assert(!response(&s, "#protocolinfo --machine studio\r\n> ", 200));
+    assert(!response(&s, "@MARAUDER:{invalid}\n", 300));
+    assert(studio_command_state(&s, 10099) == StudioCommandWaiting);
+    assert(studio_command_state(&s, 10100) == StudioCommandTimeout);
+    assert(studio_command_can_retry(&s));
+    studio_command_reply(&s, 10200, true); /* validated late link reply */
+    assert(studio_command_state(&s, 500000) == StudioCommandDone);
+
+    studio_command_begin(&s, "list -b", false, false, 0);
+    assert(!response(&s, "> #list -b\r\n>", 100));
+    assert(!s.complete);
+    assert(!response(&s, " ", 101));
+    assert(studio_command_state(&s, 50000) == StudioCommandEmpty);
+    assert(!s.replied); /* bare echo/prompt never refreshes last reply */
+
+    studio_command_begin(&s, "list -b", false, false, 0);
+    const char* reply = "#list -b\r\n\033[32m[0] test\033[0m\r\n> ";
+    bool got_reply = false;
+    for(const char* c = reply; *c; c++) got_reply |= studio_command_feed(&s, (const uint8_t*)c, 1, 200);
+    assert(got_reply && s.echo && s.last_reply == 200);
+    assert(studio_command_state(&s, 50000) == StudioCommandDone);
+
+    studio_command_begin(&s, "diagnostics", false, false, 0);
+    assert(!response(&s, "#help\n> ", 200));
+    assert(studio_command_state(&s, 10000) == StudioCommandTimeout);
+    assert(response(&s, "chip: ESP32\n", 12000));
+    assert(studio_command_state(&s, 12001) == StudioCommandReply);
+    assert(studio_command_state(&s, 22000) == StudioCommandTimeout);
+
+    studio_command_begin(&s, "sniffbeacon", true, false, 0);
+    assert(!response(&s, "#sniffbeacon -serial\n> ", 100));
+    assert(studio_command_state(&s, 14999) == StudioCommandWaiting);
+    assert(studio_command_state(&s, 15000) == StudioCommandTimeout);
+    assert(!studio_command_can_retry(&s));
+    assert(response(&s, "Starting beacon sniffer\n> ", 16000));
+    assert(studio_command_state(&s, 16000) == StudioCommandReply);
+    assert(studio_command_state(&s, 46000) == StudioCommandQuiet);
+    studio_command_reply(&s, 47000, false); /* capture-only traffic */
+    assert(studio_command_state(&s, 47000) == StudioCommandReply);
+
+    studio_command_begin(&s, "pingscan", true, false, 0);
+    assert(studio_command_state(&s, 59999) == StudioCommandWaiting);
+    assert(studio_command_state(&s, 60000) == StudioCommandTimeout);
+    assert(response(&s, "Starting scan\n> ", 61000));
+    assert(studio_command_state(&s, 121000) == StudioCommandQuiet);
+    assert(!s.complete); /* firmware has no UART completion event for this scan */
+
+    const char* mutations[] = {"reboot", "settings -s SavePCAP enable", "clearlist -a", "join -s", "evilportal -c sethtmlstr", "info; reboot", "list -b\nreboot"};
+    for(unsigned i = 0; i < sizeof(mutations)/sizeof(*mutations); i++) {
+        studio_command_begin(&s, mutations[i], false, false, 0);
+        assert(!studio_command_can_retry(&s));
+        assert(studio_command_state(&s, 29999) == StudioCommandWaiting);
+        assert(studio_command_state(&s, 30000) == StudioCommandTimeout);
+    }
+    studio_command_begin(&s, "", false, true, 0);
+    assert(studio_command_state(&s, 999999) != StudioCommandTimeout);
+    assert(!studio_command_can_retry(&s));
+    studio_command_begin(&s, NULL, false, false, 0);
+    assert(!response(&s, "old saved output\n", 300));
+    assert(studio_command_state(&s, 999999) != StudioCommandTimeout);
+
+    studio_command_begin(&s, "help", false, false, UINT32_MAX - 999);
+    assert(studio_command_state(&s, 8999) == StudioCommandWaiting);
+    assert(studio_command_state(&s, 9000) == StudioCommandTimeout);
+    char long_line[2048];
+    memset(long_line, 'x', sizeof(long_line));
+    studio_command_feed(&s, (const uint8_t*)long_line, sizeof(long_line), 10000);
+    assert(response(&s, "\n", 10001));
+    assert(response(&s, "normal reply\n", 10002));
+    assert(!s.overflow && s.used == 0);
+}
 static void feed(StudioTerminal* t, const char* s) {
     studio_terminal_feed(t, (const uint8_t*)s, strlen(s));
 }
 int main(void) {
+    test_command_status();
     StudioTerminal t;
     char rows[STUDIO_ROWS][STUDIO_COLUMNS + 1];
     studio_terminal_reset(&t);
@@ -55,6 +134,9 @@ int main(void) {
     const char* response = "#protocolinfo --machine studio\n@MARAUDER:{\"protocol\":1,\"tx\":\"studio\",\"command\":\"protocolinfo\",\"status\":\"success\",\"firmware\":\"v1.20.0\"}\n>";
     assert(studio_link_report(response, report, sizeof(report)));
     assert(strstr(report, "FW v1.20.0"));
+    char delayed[1024];
+    snprintf(delayed, sizeof(delayed), "@MARAUDER:{invalid}\n%s", response);
+    assert(studio_link_report(delayed, report, sizeof(report)));
     assert(!studio_link_report("@MARAUDER:{\"tx\":\"studio\"}", report, sizeof(report)));
     assert(!studio_link_report("@MARAUDER:{\"tx\":\"studio\"}\n", report, sizeof(report)));
     assert(!studio_link_report("@MARAUDER:{invalid}\n", report, sizeof(report)));
@@ -105,7 +187,7 @@ int main(void) {
     }
     assert(!strcmp(items[device_items[0]].actual_commands[0], "protocolinfo --machine studio"));
     assert(!strcmp(items[device_items[1]].actual_commands[0], "diagnostics"));
-    puts("PASS: link response validation, wrapping, fragmented ANSI/OSC, CRLF, backspace, ring eviction, binary noise");
+    puts("PASS: command deadlines, retry policy, quiet scans, late replies, link response validation, wrapping, fragmented ANSI/OSC, CRLF, backspace, ring eviction, binary noise");
 }
 '''
 # Compile the actual menu data to validate indexes and hardware-command omissions.
@@ -118,6 +200,6 @@ with tempfile.TemporaryDirectory() as temporary:
     binary = pathlib.Path(temporary) / 'terminal_test'
     source.write_text(TEST)
     subprocess.run(['cc', '-std=c11', '-Wall', '-Wextra', '-Werror', '-Wno-deprecated-declarations', '-fsanitize=address,undefined',
-                    '-I', str(ROOT / 'studio'), str(source), str(ROOT / 'studio/terminal.c'), str(ROOT / 'studio/link_report.c'), str(ROOT / 'script/cJSON.c'),
+                    '-I', str(ROOT / 'studio'), str(source), str(ROOT / 'studio/terminal.c'), str(ROOT / 'studio/command_status.c'), str(ROOT / 'studio/link_report.c'), str(ROOT / 'script/cJSON.c'),
                     '-o', str(binary), '-lm'], check=True)
     subprocess.run([str(binary)], check=True)

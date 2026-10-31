@@ -52,11 +52,37 @@ Flipper** uses serial transfer, not an ESP SD card. `SavePCAP` still controls
 capture output and must remain enabled when recording. Existing internal
 SPIFFS settings remain supported.
 
-Legacy v1.20.0 replies still work with Check link but do not enable Diagnostics.
+Version **1.2** adds connection feedback:
+
+- On launch, wait 1.5 seconds for board startup, then run Check link. A validated
+  reply returns to Home after 0.8 seconds. Back skips the check; selecting a home
+  tile before it starts also skips it. A failure leaves the timeout screen open.
+- Home shows the age of the last board reply during this app session. The console
+  alternates reply age with its output status. Command echoes, bare prompts,
+  malformed link replies and old saved output do not refresh that timestamp.
+  Capture packets do. This is historical evidence, not a continuous connectivity test.
+- Link checks wait 10 seconds for a valid protocol reply. Read-only queries wait
+  10 seconds for an initial reply or a stalled response. Continuous commands wait
+  15 seconds for their first reply; ping/ARP/port scans get 60 seconds; other
+  commands get 30 seconds. Deadlines begin after storage preparation.
+- After a timeout, **hold OK** to retry an allowlisted read-only query or Check
+  link. Other commands offer **hold OK: check link** instead of resending changes.
+  This stops operations marked continuous before sending the link query. Each
+  attempt opens a separate log when logging is enabled. Short OK reveals the
+  original output; Back retains its usual stop/exit behavior.
+- A quiet continuous command is labelled **Quiet**, not disconnected or complete.
+  Hold OK offers the same recovery action. No background probe interrupts a scan.
+  Scripts are exempt from command deadlines and are never replayed automatically.
+- A matching echo followed by a prompt can finish an allowlisted synchronous
+  query; an empty response reads **Done: no output**. Other replies read **Reply
+  complete**, which does not imply the command succeeded. Some v1.20.0 scans do
+  not emit UART completion events, so their completion remains unconfirmed.
+
+Legacy v1.20.0 replies work with Check link but do not enable Diagnostics.
 Unknown profiles, malformed capability arrays and unsupported protocol versions
-cannot enable it. Check link reports a reply at that moment, not continuous
-connection status. Hardware filtering is specific to our board; this build is
-not a generic auto-configuring companion for other ESP32 boards.
+cannot enable it. Each link attempt clears old diagnostics capability state.
+Hardware filtering is specific to our board; this build is not a generic
+auto-configuring companion for other ESP32 boards.
 
 ## Build and checks
 
@@ -67,11 +93,16 @@ Use the Momentum `mntm-012` SDK (same API); do not update device firmware to bui
 uv tool run --from ufbt ufbt update --hw-target f7 --url https://github.com/Next-Flip/Momentum-Firmware/releases/download/mntm-012/flipper-z-f7-sdk-mntm-012.zip
 uv tool run --from ufbt ufbt
 python3 tests/test_terminal.py
+python3 tests/test_studio_view.py
 ```
 
 Output: `dist/marauder_studio.fap`. Host tests use AddressSanitizer and
 UndefinedBehaviorSanitizer for fragmented terminal escapes, wrapping, history
-eviction, binary noise, and validated/malformed version replies.
+eviction, binary noise, validated/malformed version replies, command deadlines,
+fragmented prompts, empty query output, late replies, quiet scans, retry policy,
+script exemptions and clock wraparound. The host GUI adapter also exercises the
+actual view/input code: timeout text width, output dismissal, hold-OK recovery,
+late replies, capture-only traffic and model-lock release before callbacks.
 
 Previous v1.0 on-device checks on Qwerty (2026-10-31): app launch, home-screen fit,
 command navigation and Back, console hold/scroll controls, and a successful
@@ -80,6 +111,17 @@ Marauder v1.20.0 protocol reply. The same reply was read back from
 build (`988ffc34993c64bde36af43c32c7fdb3`); the original companion still matches
 its pre-change MD5 (`1186772e48c9b86b1356e8e22e169235`). New RF capture runs,
 all upstream commands, and SD failure conditions were not exercised.
+
+Version 1.2 on-device checks (2026-10-31): installed FAP MD5
+`c842e24a9a13cabce7e92c94caefa513` matches the local API 87.1 build. Automatic
+Check link returned to Home, the reply-age footer was visually checked, and
+manual Check link and Info displayed the legacy v1.20.0 board correctly. The
+startup reply in `protocolinfo_5.log` was read back (246 bytes). The original
+companion retains MD5 `1186772e48c9b86b1356e8e22e169235`.
+A GPIO 5V off/on attempt did not interrupt board replies, so it does **not**
+verify physical disconnect/retry behavior. Power was re-enabled. Timeout and
+retry behavior are covered by host state-machine and view/input tests only.
+No ESP32/Momentum firmware update or RF scan was performed.
 
 The UI uses the device's two-colour canvas (#000000/#FFFFFF), native primary
 and secondary labels, and a fixed-width console. The design review favoured
