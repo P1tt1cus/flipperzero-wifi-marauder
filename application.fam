@@ -1,7 +1,7 @@
 App(
     appid="marauder_studio",
     name="Echo Radio",
-    fap_version=(1, 5),
+    fap_version=(1, 6),
     apptype=FlipperAppType.EXTERNAL,
     entry_point="wifi_marauder_app",
     requires=["gui"],

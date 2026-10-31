@@ -235,3 +235,20 @@ If you'd like to donate to the app development effort:
 Find more info about Marauder and support its developer (justcallmekoko aka WillStunForFood) here: https://github.com/justcallmekoko/ESP32Marauder
 
 If you found the app preinstalled in a firmware release, consider supporting the maintainers!
+
+## Echo dashboards (1.6)
+
+Radio opens a dashboard with Discover, Captures & logs, Check link, Settings
+and More tools. More tools retains Tools, Scripts and Device. Sessions opens
+Captures, Logs, Text dumps, Last output and Export help. Existing file browsers,
+capability gates, startup Check link and command behavior remain unchanged.
+
+Four actions are visible with scrolling and a description below. Up/Down wraps;
+Left/Right jumps to first/last; short OK opens; Back returns. The Radio header
+shows `No reply` or `R <age>s` since the last meaningful reply; this is history,
+not proof of current connectivity. Sessions shows SD status.
+
+Run `python3 tests/test_dashboard.py` alongside the four existing host tests
+and the API 87.1 uFBT build. Keep `studio/echo_dashboard.h` identical to
+`applications/main/echo/echo_dashboard.h` in the maintained Momentum fork.
+The renderer is app-local, with callbacks invoked outside the GUI model lock.

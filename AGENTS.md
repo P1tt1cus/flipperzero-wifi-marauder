@@ -58,3 +58,9 @@ reported freeze, physical recovery and scope of on-device verification.
 The visible name is Echo Radio; preserve the `marauder_studio` app ID and existing
 data/protocol paths. The `sessions` launch argument opens Sessions and skips the
 automatic board query. Check normal Radio startup separately when validating.
+
+## Echo dashboards (1.6)
+
+Run `tests/test_dashboard.py` alongside existing checks. Keep
+`studio/echo_dashboard.h` identical to the maintained Momentum copy. Preserve
+startup Check link, reply-age semantics and the nonblocking session browser.
