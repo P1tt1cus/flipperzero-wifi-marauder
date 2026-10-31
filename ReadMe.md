@@ -98,8 +98,14 @@ The displayed TX maximum is the driver setting, not a measurement of radiated
 power. Radio queries use a ten-second timeout and support hold-OK retry.
 Legacy firmware keeps Radio profile hidden. Every Check link resets capabilities.
 
-Version 1.3 is built and host-tested; installation and live AU reporting checks
-are pending direct USB access to the ESP32.
+Version 1.3 is installed on Qwerty (2026-10-31), MD5
+`4cc58429c6cc4857395a282ec110a342`. Host sanitizer tests, API 87.1 build and CI
+pass. Automatic/manual Check link were visually verified against legacy v1.20.0;
+Radio profile and Diagnostics correctly stay hidden. Startup reply
+`protocolinfo_8.log` is 246 bytes. Original companion MD5 remains
+`1186772e48c9b86b1356e8e22e169235`. Fresh UART replies persisted during the
+reported GPIO disconnection, so disconnected timeout/retry was not verified.
+Live AU reporting awaits direct ESP32 USB access and firmware installation.
 
 ## Build and checks
 
