@@ -98,7 +98,7 @@ The displayed TX maximum is the driver setting, not a measurement of radiated
 power. Radio queries use a ten-second timeout and support hold-OK retry.
 Legacy firmware keeps Radio profile hidden. Every Check link resets capabilities.
 
-Version 1.3 is installed on Qwerty (2026-10-31), MD5
+Version 1.3 was installed on Qwerty (2026-10-31), MD5
 `4cc58429c6cc4857395a282ec110a342`. Host sanitizer tests, API 87.1 build and CI
 pass. Automatic/manual Check link were visually verified against legacy v1.20.0;
 Radio profile and Diagnostics correctly stay hidden. Startup reply
@@ -114,6 +114,27 @@ The stopped radio correctly shows unavailable live readings. GPIO logs
 `protocolinfo_11.log` (692 bytes) and `radiostatus_0.log` (406 bytes) contain the
 paired Studio responses. No active RF operation was tested.
 
+## Session browser recovery (1.4)
+
+Version **1.4** replaces the blocking Sessions file-picker and information dialogs
+with a browser view and detail scenes managed by the app's event loop. Back exits
+the browser; selecting a capture shows its size without parsing its contents.
+The saved-output viewer uses the same browser, and cancelling returns to the
+previous log and page. File-open failures appear in the viewer.
+
+This follows a reported freeze opening **Browse captures** on Qwerty. USB screen
+capture also stopped responding; a physical power-off recovered the device.
+The exact original lock chain was not captured. The replacement was tested on
+Qwerty: capture list, non-empty and empty capture details, Back/reopen, saved-log
+viewing and cancelling the viewer's browser all remained responsive. The three
+existing capture files were retained. No RF operation or firmware flash was
+needed for this fix.
+
+Installed 1.4 FAP MD5: `176c94ce38277de392d260d86d987217` (local/device match).
+Host sanitizer tests and the API 87.1 build pass. The new browser test covers
+queued selection, cancel/reopen, worker cleanup and return to an existing log
+viewer; it does not reproduce the original device deadlock.
+
 ## Build and checks
 
 Target: Flipper f7, API **87.1**, matching Qwerty's Momentum build `d3f89dfe`.
@@ -125,6 +146,7 @@ uv tool run --from ufbt ufbt
 python3 tests/test_terminal.py
 python3 tests/test_studio_view.py
 python3 tests/test_radio_report.py
+python3 tests/test_session_browser.py
 ```
 
 Output: `dist/marauder_studio.fap`. Host tests use AddressSanitizer and

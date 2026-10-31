@@ -17,6 +17,7 @@
 #include <gui/gui.h>
 #include "studio/studio_view.h"
 #include <gui/view_dispatcher.h>
+#include <gui/modules/file_browser.h>
 #include <gui/scene_manager.h>
 #include <gui/modules/text_box.h>
 #include <gui/modules/submenu.h>
@@ -79,6 +80,13 @@ struct WifiMarauderApp {
     atomic_bool board_diagnostics;
     atomic_bool board_radio;
     bool browse_selected_log;
+    bool log_open_failed;
+    FileBrowser* session_browser;
+    FuriString* session_browser_path;
+    uint8_t session_browser_kind; /* logs, captures, text dumps */
+    uint8_t session_info_kind; /* file locations, no output, capture details */
+    bool session_browser_active;
+    bool session_browser_from_log;
     char session_path[256];
     WIFI_TextInput* text_input;
     Storage* storage;
@@ -165,6 +173,7 @@ typedef enum {
     WifiMarauderAppViewTextInput,
     WifiMarauderAppViewWidget,
     WifiMarauderAppViewSubmenu,
+    WifiMarauderAppViewSessionBrowser,
 } WifiMarauderAppView;
 
 static inline uint32_t wifi_marauder_now_ms(void) {

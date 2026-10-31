@@ -8,7 +8,9 @@ static void log_button(GuiButtonType result, InputType type, void* context) {
 static void log_page(WifiMarauderApp* app) {
     bool file_open = storage_file_is_open(app->log_file);
     furi_string_reset(app->file_view_store);
-    if(file_open) {
+    if(app->log_open_failed) {
+        furi_string_set(app->file_view_store, "Cannot open output file.\nCheck SD and Browse to retry.");
+    } else if(file_open) {
         if(!storage_file_seek(app->log_file, (app->open_log_file_page - 1) * WIFI_MARAUDER_TEXT_BOX_STORE_SIZE, true)) {
             furi_string_set(app->file_view_store, "Cannot seek in this file.");
         } else {
@@ -41,22 +43,28 @@ static void log_page(WifiMarauderApp* app) {
 
 static void open_log(WifiMarauderApp* app) {
     storage_file_close(app->log_file);
+    app->log_open_failed = false;
     if(storage_file_open(app->log_file, app->log_file_path, FSAM_READ, FSOM_OPEN_EXISTING)) {
         uint64_t size = storage_file_size(app->log_file);
         app->open_log_file_num_pages = (size + WIFI_MARAUDER_TEXT_BOX_STORE_SIZE - 1) / WIFI_MARAUDER_TEXT_BOX_STORE_SIZE;
         if(!app->open_log_file_num_pages) app->open_log_file_num_pages = 1;
     } else {
-        dialog_message_show_storage_error(app->dialogs, "Cannot open output file");
+        app->log_open_failed = true;
+        app->open_log_file_num_pages = 1;
     }
     app->open_log_file_page = 1;
 }
 
 void wifi_marauder_scene_log_viewer_on_enter(void* context) {
     WifiMarauderApp* app = context;
+    int restore_page = app->session_browser_from_log ? app->open_log_file_page : 1;
+    app->session_browser_from_log = false;
     app->open_log_file_page = 1;
     app->open_log_file_num_pages = 1;
+    app->log_open_failed = false;
     if(app->browse_selected_log) open_log(app);
     app->browse_selected_log = false;
+    app->open_log_file_page = CLAMP(restore_page, app->open_log_file_num_pages, 1);
     log_page(app);
     view_dispatcher_switch_to_view(app->view_dispatcher, WifiMarauderAppViewWidget);
 }
@@ -65,16 +73,13 @@ bool wifi_marauder_scene_log_viewer_on_event(void* context, SceneManagerEvent ev
     WifiMarauderApp* app = context;
     if(event.type != SceneManagerEventTypeCustom) return false;
     if(event.event == GuiButtonTypeCenter) {
-        FuriString* path = furi_string_alloc_set_str(MARAUDER_APP_FOLDER_LOGS);
-        DialogsFileBrowserOptions options;
-        dialog_file_browser_set_basic_options(&options, ".log", &I_Text_10x10);
-        options.base_path = MARAUDER_APP_FOLDER_LOGS;
-        options.hide_ext = false;
-        if(dialog_file_browser_show(app->dialogs, path, path, &options)) {
-            strlcpy(app->log_file_path, furi_string_get_cstr(path), sizeof(app->log_file_path));
-            open_log(app);
-        }
-        furi_string_free(path);
+        /* Reopen the same saved log if the browser is cancelled. */
+        app->browse_selected_log = storage_file_is_open(app->log_file);
+        app->session_browser_kind = 0;
+        app->session_browser_from_log = true;
+        furi_string_set(app->session_browser_path, MARAUDER_APP_FOLDER_LOGS);
+        scene_manager_next_scene(app->scene_manager, WifiMarauderSceneSessionBrowser);
+        return true;
     } else if(event.event == GuiButtonTypeRight && app->open_log_file_page < app->open_log_file_num_pages) {
         app->open_log_file_page++;
     } else if(event.event == GuiButtonTypeLeft && app->open_log_file_page > 1) {

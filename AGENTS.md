@@ -42,3 +42,13 @@ TX maximum and errors; an inactive radio is not AU-confirmed. Run
 `python3 tests/test_radio_report.py` along with existing checks. See ReadMe.md for
 installed hashes and hardware evidence. Paired ESP32 `studio.2-au` is installed;
 direct USB AU checks and GPIO Radio profile/Diagnostics checks pass.
+
+## Session browser (Studio 1.4)
+
+Sessions and the log viewer use the app-owned FileBrowser view, with selection
+queued to the scene manager. Keep browser worker start/stop balanced and avoid
+blocking dialog calls in these paths. Back from a viewer's browser must preserve
+the previously opened file/page; selecting a new log resets to page one and
+returns to the existing viewer scene. Run `python3 tests/test_session_browser.py`
+alongside the other host checks and API 87.1 build. Read the README for the
+reported freeze, physical recovery and scope of on-device verification.
