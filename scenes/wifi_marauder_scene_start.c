@@ -112,8 +112,6 @@ const WifiMarauderItem items[NUM_MENU_ITEMS] = {
      NO_ARGS,
      FOCUS_CONSOLE_END,
      NO_TIP},
-    {"Save List", {"ap", "ssid"}, 2, {"save -a", "save -s"}, NO_ARGS, FOCUS_CONSOLE_END, NO_TIP},
-    {"Load List", {"ap", "ssid"}, 2, {"load -a", "load -s"}, NO_ARGS, FOCUS_CONSOLE_END, NO_TIP},
     {"Add Target",
      {"ap", "station"},
      2,
@@ -165,35 +163,14 @@ const WifiMarauderItem items[NUM_MENU_ITEMS] = {
      INPUT_ARGS,
      FOCUS_CONSOLE_END,
      NO_TIP},
-    {"Wardrive",
-     {""},
-     1,
-     {"wardrive"},
-     NO_ARGS,
-     FOCUS_CONSOLE_END,
-     SHOW_STOPSCAN_TIP},
-    {"Geofence",
-     {"list", "set", "clear"},
-     3,
-     {"geofence list", "geofence set", "geofence clear"},
-     TOGGLE_ARGS,
-     FOCUS_CONSOLE_START,
-     NO_TIP},
-    {"Upload Wardrive",
-     {"wdg", "wigle", "both"},
-     3,
-     {"upload -d wdg", "upload -d wigle", "upload -d both"},
-     NO_ARGS,
-     FOCUS_CONSOLE_END,
-     SHOW_STOPSCAN_TIP},
     {"Evil Portal",
-     {"start", "set html", "set AP"},
-     3,
-     {"evilportal -c start", "evilportal -c sethtml", "evilportal -c setap"},
+     {"start", "set AP"},
+     2,
+     {"evilportal -c start", "evilportal -c setap"},
      TOGGLE_ARGS,
      FOCUS_CONSOLE_END,
      SHOW_STOPSCAN_TIP},
-    {"Load Evil Portal HTML file",
+    {"HTML from Flipper",
      {""},
      1,
      {"evilportal -c sethtmlstr"},
@@ -280,51 +257,9 @@ const WifiMarauderItem items[NUM_MENU_ITEMS] = {
      TOGGLE_ARGS,
      FOCUS_CONSOLE_END,
      NO_TIP},
-    {"LED", {"hex", "pattern"}, 2, {"led -s", "led -p"}, INPUT_ARGS, FOCUS_CONSOLE_END, NO_TIP},
-    {"GPS Data",
-     {"tracker", "stream", "fix", "sats", "lat", "lon", "alt", "date", "accuracy", "text", "nmea", "native", "all", "gps", "glonass", "galileo", "navic", "qzss", "beidou GB", "beidou BD"},
-     20,
-     {"gps -t",
-      "gpsdata",
-      "gps -g fix",
-      "gps -g sat",
-      "gps -g lat",
-      "gps -g lon",
-      "gps -g alt",
-      "gps -g date",
-      "gps -g accuracy",
-      "gps -g text",
-      "gps -g nmea",
-      "gps -n native",
-      "gps -n all",
-      "gps -n gps",
-      "gps -n glonass",
-      "gps -n galileo",
-      "gps -n navic",
-      "gps -n qzss",
-      "gps -n beidou",
-      "gps -n beidou -b"},
-     NO_ARGS,
-     FOCUS_CONSOLE_END,
-     SHOW_STOPSCAN_TIP},
-    {"NMEA Stream", {""}, 1, {"nmea"}, NO_ARGS, FOCUS_CONSOLE_END, SHOW_STOPSCAN_TIP},
-    {"GPS POI",
-     {"start", "mark", "end"},
-     3,
-     {"gpspoi -s", "gpspoi -m", "gpspoi -e"},
-     NO_ARGS,
-     FOCUS_CONSOLE_END,
-     NO_TIP},
-    {"Wardrive POI",
-     {"default", "label"},
-     2,
-     {"wardrivepoi", "wardrivepoi"},
-     TOGGLE_ARGS,
-     FOCUS_CONSOLE_END,
-     NO_TIP},
     {"Settings",
-     {"display", "restore", "ForcePMKID on", "ForcePMKID off", "ForceProbe on", "ForceProbe off", "SavePCAP on", "SavePCAP off", "EnableLED on", "EnableLED off", "EPDeauth on", "EPDeauth off", "Censor on", "Censor off", "other"},
-     15,
+     {"display", "restore", "ForcePMKID on", "ForcePMKID off", "ForceProbe on", "ForceProbe off", "SavePCAP on", "SavePCAP off", "EPDeauth on", "EPDeauth off", "Censor on", "Censor off", "other"},
+     13,
      {"settings",
       "settings -r",
       "settings -s ForcePMKID enable",
@@ -333,8 +268,6 @@ const WifiMarauderItem items[NUM_MENU_ITEMS] = {
       "settings -s ForceProbe disable",
       "settings -s SavePCAP enable",
       "settings -s SavePCAP disable",
-      "settings -s EnableLED enable",
-      "settings -s EnableLED disable",
       "settings -s EPDeauth enable",
       "settings -s EPDeauth disable",
       "settings -s Censor enable",
@@ -344,19 +277,11 @@ const WifiMarauderItem items[NUM_MENU_ITEMS] = {
      FOCUS_CONSOLE_START,
      NO_TIP},
     {"Shutdown WiFi", {""}, 1, {"stopscan -f"}, NO_ARGS, FOCUS_CONSOLE_START, NO_TIP},
-    {"List SD", {""}, 1, {"ls /"}, INPUT_ARGS, FOCUS_CONSOLE_END, NO_TIP},
-    {"Protocol Info", {""}, 1, {"protocolinfo --machine studio"}, NO_ARGS, FOCUS_CONSOLE_START, NO_TIP},
-    {"Update", {"sd"}, 1, {"update -s"}, NO_ARGS, FOCUS_CONSOLE_END, NO_TIP},
+    {"Check link", {""}, 1, {"protocolinfo --machine studio"}, NO_ARGS, FOCUS_CONSOLE_START, NO_TIP},
     {"Reboot", {""}, 1, {"reboot"}, NO_ARGS, FOCUS_CONSOLE_END, NO_TIP},
     {"Help", {""}, 1, {"help"}, NO_ARGS, FOCUS_CONSOLE_START, SHOW_STOPSCAN_TIP},
     {"Info", {""}, 1, {"info"}, NO_ARGS, FOCUS_CONSOLE_START, NO_TIP},
-    {"SPIFFS",
-     {"backup", "status", "restore"},
-     3,
-     {"backupspiffs", "backupstatus", "restorespiffs"},
-     NO_ARGS,
-     FOCUS_CONSOLE_END,
-     NO_TIP},
+    {"Diagnostics", {""}, 1, {"diagnostics"}, NO_ARGS, FOCUS_CONSOLE_START, NO_TIP},
     {"Scripts", {""}, 1, {""}, NO_ARGS, FOCUS_CONSOLE_END, NO_TIP},
     {"Save to flipper sdcard", // keep as last entry or change logic in callback below
      {""},
@@ -367,10 +292,10 @@ const WifiMarauderItem items[NUM_MENU_ITEMS] = {
      NO_TIP},
 };
 
-/* Explicit groups retain upstream commands while making common tasks reachable. */
-static const uint8_t discover_items[] = {1, 6, 8, 25, 26, 27, 3, 4, 2, 24};
-static const uint8_t tools_items[] = {5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 20, 21, 22, 23, 34};
-static const uint8_t device_items[] = {36, 40, 27, 33, 28, 35, 41, 38, 37, 39};
+/* Only commands supported by our headless ZY-ESP32 hardware profile. */
+static const uint8_t discover_items[] = {1, 6, 8, 20, 21, 22, 3, 4, 2, 19};
+static const uint8_t tools_items[] = {5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 24};
+static const uint8_t device_items[] = {25, 29, 28, 22, 23, 26, 27};
 
 static bool wifi_marauder_command_stops_on_exit(const char* command) {
     if(command == NULL) return false;
@@ -382,15 +307,13 @@ static bool wifi_marauder_command_stops_on_exit(const char* command) {
            strncmp(command, "attack ", strlen("attack ")) == 0 ||
            strncmp(command, "blespam ", strlen("blespam ")) == 0 ||
            strncmp(command, "spoofat ", strlen("spoofat ")) == 0 ||
-           strcmp(command, "wardrive") == 0 ||
            strcmp(command, "evilportal -c start") == 0 ||
            strncmp(command, "karma ", strlen("karma ")) == 0 ||
            strncmp(command, "sniff", strlen("sniff")) == 0 ||
            strcmp(command, "mactrack") == 0 || strcmp(command, "packetcount") == 0 ||
            strncmp(command, "foxhunt ", strlen("foxhunt ")) == 0 ||
            strncmp(command, "portscan ", strlen("portscan ")) == 0 ||
-           strcmp(command, "gps -t") == 0 || strcmp(command, "gpsdata") == 0 ||
-           strcmp(command, "nmea") == 0 || strcmp(command, "csimotion start") == 0;
+           strcmp(command, "csimotion start") == 0;
 }
 
 static void wifi_marauder_scene_start_var_list_enter_callback(void* context, uint32_t index) {
@@ -449,7 +372,6 @@ static void wifi_marauder_scene_start_var_list_enter_callback(void* context, uin
         needs_keyboard = true;
     } else if(strcmp(app->selected_tx_string, "csimotion status") == 0 ||
               strcmp(app->selected_tx_string, "csimotion recalibrate") == 0 ||
-              strcmp(app->selected_tx_string, "geofence list") == 0 ||
               strcmp(app->selected_tx_string, "join -s") == 0 ||
               strcmp(app->selected_tx_string, "randapmac") == 0 ||
               strcmp(app->selected_tx_string, "randstamac") == 0 ||
@@ -490,12 +412,21 @@ void wifi_marauder_scene_start_on_enter(void* context) {
                            app->menu_group == 1 ? tools_items : device_items;
     app->menu_count = app->menu_group == 0 ? COUNT_OF(discover_items) :
                       app->menu_group == 1 ? COUNT_OF(tools_items) : COUNT_OF(device_items);
-    memcpy(app->menu_map, group, app->menu_count);
+    uint8_t group_count = app->menu_count;
+    app->menu_count = 0;
+    for(uint8_t row = 0; row < group_count; row++) {
+        uint8_t i = group[row];
+        if(strcmp(items[i].actual_commands[0], "diagnostics") == 0 &&
+           !atomic_load(&app->board_diagnostics)) continue;
+        app->menu_map[app->menu_count++] = i;
+    }
+    if(app->menu_positions[app->menu_group] >= app->menu_count)
+        app->menu_positions[app->menu_group] = 0;
     for(uint8_t row = 0; row < app->menu_count; row++) {
         uint8_t i = app->menu_map[row];
         VariableItem* item = variable_item_list_add(
             var_item_list,
-            i == 36 ? "Check link" : items[i].item_string,
+            items[i].item_string,
             items[i].num_options_menu,
             wifi_marauder_scene_start_var_list_change_callback,
             app);

@@ -22,7 +22,9 @@ Open **Apps → GPIO → Marauder Studio**. This is a separate FAP; the original
 - **Sessions:** browse saved logs, PCAP sizes, text dumps, or the last console buffer.
 - **Tools:** additional upstream commands.
 - **Scripts:** the existing workflow editor and runner.
-- **Device → Check link:** requests a version reply and shows a readable summary.
+- **Device → Check link:** requests a version/profile reply and shows a readable summary.
+- **Device → Diagnostics:** appears after Check link confirms support in Studio firmware;
+  reports chip, flash, memory, reset and scan state. Scroll for the full report.
 - **Settings:** immediate log/capture saving toggles and control/board notes.
 
 In the console, **OK** holds the display or follows new output. **Up/Down** scroll
@@ -38,11 +40,23 @@ Files and the two save preferences are shared with the original companion under
 size; export through qFlipper for analysis in Wireshark. Flipper SD storage and
 an ESP32-attached SD card are separate.
 
-This build is tailored to the user's ZY-ESP32 running Marauder v1.20.0 LDDB.
-GPS/wardrive entries are omitted because that firmware has no GPS support.
-Other upstream commands remain firmware-dependent; showing a menu item does
-not prove the connected board implements it. Check link confirms a reply at the
-time of the check, not a continuous connection status.
+Version **1.1** targets the ZY-ESP32 (original ESP32, 4 MB), with paired firmware
+profile `STUDIO_ZY_ESP32` / `studio-zy-esp32`. GPS/wardrive/geofences, ESP SD
+list/save/load/backup/update, RGB LED and SD HTML commands are removed from the
+menus. Script LED controls are removed; old `enableLed` metadata is preserved
+when saving a script but is not sent to this board. Custom script commands for
+absent hardware are rejected by the paired firmware.
+
+Wi-Fi 2.4 GHz, BLE, CSI and UART-to-Flipper capture remain available. **HTML from
+Flipper** uses serial transfer, not an ESP SD card. `SavePCAP` still controls
+capture output and must remain enabled when recording. Existing internal
+SPIFFS settings remain supported.
+
+Legacy v1.20.0 replies still work with Check link but do not enable Diagnostics.
+Unknown profiles, malformed capability arrays and unsupported protocol versions
+cannot enable it. Check link reports a reply at that moment, not continuous
+connection status. Hardware filtering is specific to our board; this build is
+not a generic auto-configuring companion for other ESP32 boards.
 
 ## Build and checks
 
@@ -59,7 +73,7 @@ Output: `dist/marauder_studio.fap`. Host tests use AddressSanitizer and
 UndefinedBehaviorSanitizer for fragmented terminal escapes, wrapping, history
 eviction, binary noise, and validated/malformed version replies.
 
-On-device checks on Qwerty (2026-10-31): app launch, home-screen fit,
+Previous v1.0 on-device checks on Qwerty (2026-10-31): app launch, home-screen fit,
 command navigation and Back, console hold/scroll controls, and a successful
 Marauder v1.20.0 protocol reply. The same reply was read back from
 `logs/protocolinfo_3.log` (246 bytes). The installed FAP MD5 matches the local

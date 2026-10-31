@@ -9,7 +9,9 @@ This is P1tt1cus's maintained companion fork. Read ReadMe.md before making chang
 - Paired ESP32 fork: https://github.com/P1tt1cus/ESP32Marauder
 - Paired Flipper firmware fork: https://github.com/P1tt1cus/Momentum-Firmware
 - Hardware profile: Flipper f7/API 87.1 and ZY-ESP32 (ESP32-D0WD-V3, 4 MB,
-  ESP32_LDDB, UART0 at 115200). GPS is unavailable in the initial LDDB firmware.
+  STUDIO_ZY_ESP32, UART0 at 115200). No GPS, ESP SD, RGB LED,
+  attached screen, battery monitor or PSRAM. Diagnostics requires a successful
+  profile/capability reply; legacy LDDB firmware keeps it hidden.
 - Build using the pinned SDK/tooling in .github/workflows/build.yml. Run
   `python3 tests/test_terminal.py` and `ufbt` for relevant app changes.
 - Preserve GPL licensing, upstream attribution, shared data formats, and the

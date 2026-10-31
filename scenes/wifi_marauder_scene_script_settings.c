@@ -2,8 +2,7 @@
 
 enum ScriptSettingsOption {
     ScriptSettingsOptionRepeat,
-    ScriptSettingsOptionSavePcap,
-    ScriptSettingsOptionEnableLed
+    ScriptSettingsOptionSavePcap
 };
 
 const char* option_values[3] = {"No", "Yes", "Default"};
@@ -30,10 +29,6 @@ static void wifi_marauder_scene_script_settings_change_callback(VariableItem* it
         variable_item_set_current_value_text(item, option_values[option_value_index]);
         app->script->save_pcap = option_value_index;
         break;
-    case ScriptSettingsOptionEnableLed:
-        variable_item_set_current_value_text(item, option_values[option_value_index]);
-        app->script->enable_led = option_value_index;
-        break;
     }
 }
 
@@ -58,16 +53,6 @@ void wifi_marauder_scene_script_settings_on_enter(void* context) {
         app);
     variable_item_set_current_value_index(save_pcap_item, app->script->save_pcap);
     variable_item_set_current_value_text(save_pcap_item, option_values[app->script->save_pcap]);
-
-    // Enable board LED option
-    VariableItem* enable_led_item = variable_item_list_add(
-        app->var_item_list,
-        "Enable LED",
-        3,
-        wifi_marauder_scene_script_settings_change_callback,
-        app);
-    variable_item_set_current_value_index(enable_led_item, app->script->enable_led);
-    variable_item_set_current_value_text(enable_led_item, option_values[app->script->enable_led]);
 
     variable_item_list_set_selected_item(
         var_item_list,

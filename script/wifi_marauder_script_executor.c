@@ -282,16 +282,7 @@ void wifi_marauder_script_execute_start(void* context) {
     WifiMarauderScript* script = worker->script;
     char command[100];
 
-    // Enables or disables the LED according to script settings
-    if(script->enable_led != WifiMarauderScriptBooleanUndefined) {
-        snprintf(
-            command,
-            sizeof(command),
-            "settings -s EnableLED %s",
-            script->enable_led ? "enable" : "disable");
-        wifi_marauder_uart_tx(worker->uart, (uint8_t*)command, strlen(command));
-        _send_line_break(worker);
-    }
+    // Legacy enableLed metadata is preserved in files but unused on ZY-ESP32.
 
     // Enables or disables PCAP saving according to script settings
     if(script->save_pcap != WifiMarauderScriptBooleanUndefined) {

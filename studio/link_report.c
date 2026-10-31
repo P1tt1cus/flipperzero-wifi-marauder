@@ -4,6 +4,13 @@
 #include <string.h>
 
 bool studio_link_report(const char* output, char* report, size_t size) {
+    bool diagnostics;
+    return studio_link_report_with_features(output, report, size, &diagnostics);
+}
+
+bool studio_link_report_with_features(
+    const char* output, char* report, size_t size, bool* diagnostics) {
+    *diagnostics = false;
     const char* json = strstr(output, "@MARAUDER:");
     if(!json) return false;
     json += strlen("@MARAUDER:");
@@ -31,8 +38,22 @@ bool studio_link_report(const char* output, char* report, size_t size) {
     bool valid = cJSON_IsString(tx) && strcmp(tx->valuestring, "studio") == 0 &&
         cJSON_IsString(command) && strcmp(command->valuestring, "protocolinfo") == 0 &&
         cJSON_IsString(status) && strcmp(status->valuestring, "success") == 0 &&
-        cJSON_IsString(firmware) && firmware->valuestring[0] && cJSON_IsNumber(protocol);
+        cJSON_IsString(firmware) && firmware->valuestring[0] &&
+        cJSON_IsNumber(protocol) && protocol->valuedouble == 1;
     if(valid) snprintf(report, size, "Board replied\nFW %.17s\nProtocol %d / OK\nUART 115200", firmware->valuestring, protocol->valueint);
+    const cJSON* profile = cJSON_GetObjectItemCaseSensitive(reply, "profile");
+    const cJSON* features = cJSON_GetObjectItemCaseSensitive(reply, "capabilities");
+    if(valid && cJSON_IsString(profile) &&
+       strcmp(profile->valuestring, "studio-zy-esp32") == 0 && cJSON_IsArray(features)) {
+        const cJSON* feature;
+        bool well_formed = true;
+        cJSON_ArrayForEach(feature, features) {
+            if(!cJSON_IsString(feature)) { well_formed = false; break; }
+            if(strcmp(feature->valuestring, "diagnostics") == 0) *diagnostics = true;
+        }
+        if(!well_formed) *diagnostics = false;
+        else snprintf(report, size, "Studio ZY-ESP32\nFW %.17s\nProfile confirmed\nUART 115200", firmware->valuestring);
+    }
     cJSON_Delete(reply);
     return valid;
 }

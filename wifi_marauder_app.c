@@ -29,6 +29,7 @@ static void studio_home_select(uint32_t index, void* context) {
 
 WifiMarauderApp* wifi_marauder_app_alloc() {
     WifiMarauderApp* app = calloc(1, sizeof(WifiMarauderApp));
+    atomic_init(&app->board_diagnostics, false);
 
     app->gui = furi_record_open(RECORD_GUI);
     app->dialogs = furi_record_open(RECORD_DIALOGS);

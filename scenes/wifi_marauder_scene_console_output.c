@@ -66,7 +66,10 @@ void wifi_marauder_console_output_handle_rx_data_cb(uint8_t* buf, size_t len, vo
     if(!app->link_summary_shown && app->selected_tx_string &&
        strcmp(app->selected_tx_string, "protocolinfo --machine studio") == 0) {
         char report[128];
-        if(studio_link_report(furi_string_get_cstr(app->text_box_store), report, sizeof(report))) {
+        bool diagnostics;
+        if(studio_link_report_with_features(
+               furi_string_get_cstr(app->text_box_store), report, sizeof(report), &diagnostics)) {
+            atomic_store(&app->board_diagnostics, diagnostics);
             studio_view_report(app->studio, report);
             app->link_summary_shown = true;
         }

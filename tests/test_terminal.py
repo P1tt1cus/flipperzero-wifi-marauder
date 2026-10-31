@@ -1,5 +1,6 @@
 """Host regression tests for fragmented UART text and bounded scroll history."""
 import pathlib
+import re
 import subprocess
 import tempfile
 
@@ -59,9 +60,59 @@ int main(void) {
     assert(!studio_link_report("@MARAUDER:{invalid}\n", report, sizeof(report)));
     assert(!studio_link_report("@MARAUDER:[[[[[[]]]]]]\n", report, sizeof(report)));
     assert(!studio_link_report("#protocolinfo\n>", report, sizeof(report)));
+    bool diagnostics = false;
+    assert(studio_link_report_with_features("@MARAUDER:{\"protocol\":1,\"tx\":\"studio\",\"command\":\"protocolinfo\",\"status\":\"success\",\"firmware\":\"v1.20.0\",\"profile\":\"studio-zy-esp32\",\"capabilities\":[\"wifi-2.4\",\"ble\",\"serial-pcap\",\"diagnostics\"]}\n", report, sizeof(report), &diagnostics));
+    assert(diagnostics && strstr(report, "Profile confirmed"));
+    diagnostics = true;
+    assert(studio_link_report_with_features("@MARAUDER:{\"protocol\":1,\"tx\":\"studio\",\"command\":\"protocolinfo\",\"status\":\"success\",\"firmware\":\"v1.20.0\",\"profile\":\"studio-zy-esp32\",\"capabilities\":[]}\n", report, sizeof(report), &diagnostics));
+    assert(!diagnostics);
+    diagnostics = true;
+    assert(studio_link_report_with_features("@MARAUDER:{\"protocol\":1,\"tx\":\"studio\",\"command\":\"protocolinfo\",\"status\":\"success\",\"firmware\":\"v1.20.0\",\"profile\":\"studio-zy-esp32\",\"capabilities\":[\"diagnostics\",12]}\n", report, sizeof(report), &diagnostics));
+    assert(!diagnostics);
+    diagnostics = true;
+    assert(studio_link_report_with_features("@MARAUDER:{\"protocol\":1,\"tx\":\"studio\",\"command\":\"protocolinfo\",\"status\":\"success\",\"firmware\":\"v1.20.0\",\"profile\":\"studio-zy-esp32\",\"capabilities\":null}\n", report, sizeof(report), &diagnostics));
+    assert(!diagnostics);
+    diagnostics = true;
+    assert(studio_link_report_with_features("@MARAUDER:{\"protocol\":1,\"tx\":\"studio\",\"command\":\"protocolinfo\",\"status\":\"success\",\"firmware\":\"v1.20.0\",\"profile\":\"another-board\",\"capabilities\":[\"wifi-2.4\",\"ble\",\"serial-pcap\",\"diagnostics\"]}\n", report, sizeof(report), &diagnostics));
+    assert(!diagnostics);
+    assert(studio_link_report_with_features(response, report, sizeof(report), &diagnostics));
+    assert(!diagnostics);
+    assert(!studio_link_report_with_features("@MARAUDER:{\"protocol\":2,\"tx\":\"studio\",\"command\":\"protocolinfo\",\"status\":\"success\",\"firmware\":\"v1.20.0\",\"profile\":\"studio-zy-esp32\",\"capabilities\":[\"wifi-2.4\",\"ble\",\"serial-pcap\",\"diagnostics\"]}\n", report, sizeof(report), &diagnostics));
+    assert(!studio_link_report_with_features("@MARAUDER:{\"protocol\":1.5,\"tx\":\"studio\",\"command\":\"protocolinfo\",\"status\":\"success\",\"firmware\":\"v1.20.0\",\"profile\":\"studio-zy-esp32\",\"capabilities\":[\"wifi-2.4\",\"ble\",\"serial-pcap\",\"diagnostics\"]}\n", report, sizeof(report), &diagnostics));
+    assert(!studio_link_report_with_features("@MARAUDER:{\"protocol\":1,\"tx\":\"stale\",\"command\":\"protocolinfo\",\"status\":\"success\",\"firmware\":\"v1.20.0\",\"profile\":\"studio-zy-esp32\",\"capabilities\":[\"wifi-2.4\",\"ble\",\"serial-pcap\",\"diagnostics\"]}\n", report, sizeof(report), &diagnostics));
+    assert(!studio_link_report_with_features("@MARAUDER:{\"protocol\":1,\"tx\":\"studio\",\"command\":\"protocolinfo\",\"status\":\"error\",\"firmware\":\"v1.20.0\",\"profile\":\"studio-zy-esp32\",\"capabilities\":[\"wifi-2.4\",\"ble\",\"serial-pcap\",\"diagnostics\"]}\n", report, sizeof(report), &diagnostics));
+    const char* unsupported[] = {"gps", "gpsdata", "nmea", "wardrive", "wardrivepoi", "gpspoi", "geofence", "upload", "led", "ls", "save", "load", "backupspiffs", "backupstatus", "restorespiffs", "update"};
+    for(unsigned i = 0; i < NUM_MENU_ITEMS; i++) {
+        assert(items[i].num_options_menu > 0 && items[i].num_options_menu <= MAX_OPTIONS);
+        for(int j = 0; j < items[i].num_options_menu; j++) {
+            const char* cmd = items[i].actual_commands[j];
+            assert(cmd && items[i].options_menu[j]);
+            for(unsigned k = 0; k < sizeof(unsupported)/sizeof(*unsupported); k++) {
+                size_t n = strlen(unsupported[k]);
+                assert(strncmp(cmd, unsupported[k], n) || (cmd[n] != 0 && cmd[n] != ' '));
+            }
+            assert(!strstr(cmd, "EnableLED"));
+            assert(strcmp(cmd, "evilportal -c sethtml"));
+        }
+    }
+    assert(!strcmp(items[NUM_MENU_ITEMS - 2].item_string, "Scripts"));
+    assert(!strcmp(items[NUM_MENU_ITEMS - 1].item_string, "Save to flipper sdcard"));
+    const uint8_t* groups[] = {discover_items, tools_items, device_items};
+    size_t lengths[] = {sizeof(discover_items), sizeof(tools_items), sizeof(device_items)};
+    for(unsigned g = 0; g < 3; g++) for(size_t j = 0; j < lengths[g]; j++) {
+        assert(groups[g][j] < NUM_MENU_ITEMS - 2);
+        for(size_t k = 0; k < j; k++) assert(groups[g][k] != groups[g][j]);
+    }
+    assert(!strcmp(items[device_items[0]].actual_commands[0], "protocolinfo --machine studio"));
+    assert(!strcmp(items[device_items[1]].actual_commands[0], "diagnostics"));
     puts("PASS: link response validation, wrapping, fragmented ANSI/OSC, CRLF, backspace, ring eviction, binary noise");
 }
 '''
+# Compile the actual menu data to validate indexes and hardware-command omissions.
+menu_source = (ROOT / 'scenes/wifi_marauder_scene_start.c').read_text()
+menu_data = menu_source[menu_source.index('typedef enum { NO_ARGS'):menu_source.index('static bool wifi_marauder_command_stops_on_exit')]
+menu_count = re.search(r'#define NUM_MENU_ITEMS \((\d+)\)', (ROOT / 'wifi_marauder_app_i.h').read_text())[1]
+TEST = TEST.replace('int main(void)', '#define NUM_MENU_ITEMS '+menu_count+'\n'+menu_data+'\nint main(void)')
 with tempfile.TemporaryDirectory() as temporary:
     source = pathlib.Path(temporary) / 'terminal_test.c'
     binary = pathlib.Path(temporary) / 'terminal_test'

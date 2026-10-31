@@ -47,8 +47,8 @@ bool wifi_marauder_scene_settings_init_on_event(void* context, SceneManagerEvent
         dialog_message_show_storage_error(app->dialogs, "Cannot save settings");
     } else if(event.event == 301) {
         DialogMessage* message = dialog_message_alloc();
-        dialog_message_set_header(message, "Your LDDB board", 64, 1, AlignCenter, AlignTop);
-        dialog_message_set_text(message, "GPS is not built in.\nConsole: OK hold/follow\nArrows scroll; Back exits.\nCheck link in Device.", 2, 17, AlignLeft, AlignTop);
+        dialog_message_set_header(message, "Your ZY-ESP32", 64, 1, AlignCenter, AlignTop);
+        dialog_message_set_text(message, "No GPS or ESP SD.\nConsole: OK hold/follow\nArrows scroll; Back exits.\nCheck link in Device.", 2, 17, AlignLeft, AlignTop);
         dialog_message_set_buttons(message, NULL, "Back", NULL);
         dialog_message_show(app->dialogs, message);
         dialog_message_free(message);

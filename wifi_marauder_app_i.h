@@ -29,7 +29,7 @@
 #include <lib/toolbox/path.h>
 #include <dialogs/dialogs.h>
 
-#define NUM_MENU_ITEMS (44)
+#define NUM_MENU_ITEMS (32)
 
 #define WIFI_MARAUDER_TEXT_BOX_STORE_SIZE (4096)
 #define WIFI_MARAUDER_TEXT_INPUT_STORE_SIZE (512)
@@ -71,6 +71,7 @@ struct WifiMarauderApp {
     uint32_t console_started;
     atomic_bool storage_error;
     bool link_summary_shown;
+    atomic_bool board_diagnostics;
     bool browse_selected_log;
     char session_path[256];
     WIFI_TextInput* text_input;
