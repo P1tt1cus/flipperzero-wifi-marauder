@@ -23,7 +23,7 @@ void studio_command_begin(StudioCommandStatus* status, const char* command,
     snprintf(status->command, sizeof(status->command), "%s", command ? command : "");
     if(script) status->kind = StudioCommandScript;
     else if(!command || !*command) status->kind = StudioCommandOff;
-    else if(strcmp(command, "protocolinfo --machine studio") == 0) status->kind = StudioCommandLink;
+    else if(strcmp(command, "protocolinfo --machine studio") == 0 || strcmp(command, "radiostatus --machine studio") == 0) status->kind = StudioCommandLink;
     else if(query(command)) status->kind = StudioCommandQuery;
     else if(strcmp(command, "pingscan") == 0 || strcmp(command, "arpscan") == 0 ||
             strncmp(command, "portscan ", 9) == 0) status->kind = StudioCommandNetworkScan;
@@ -110,7 +110,7 @@ bool studio_command_can_retry(const StudioCommandStatus* status) {
 
 const char* studio_command_timeout_title(const StudioCommandStatus* status) {
     switch(status->kind) {
-    case StudioCommandLink: return "Link timed out (10s)";
+    case StudioCommandLink: return !strcmp(status->command,"radiostatus --machine studio") ? "Radio query timeout" : "Link timed out (10s)";
     case StudioCommandQuery: return "Query timed out";
     case StudioCommandNetworkScan: return "No scan reply (60s)";
     case StudioCommandStream: return "No start reply (15s)";

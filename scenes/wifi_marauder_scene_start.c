@@ -282,6 +282,7 @@ const WifiMarauderItem items[NUM_MENU_ITEMS] = {
     {"Help", {""}, 1, {"help"}, NO_ARGS, FOCUS_CONSOLE_START, SHOW_STOPSCAN_TIP},
     {"Info", {""}, 1, {"info"}, NO_ARGS, FOCUS_CONSOLE_START, NO_TIP},
     {"Diagnostics", {""}, 1, {"diagnostics"}, NO_ARGS, FOCUS_CONSOLE_START, NO_TIP},
+    {"Radio profile", {""}, 1, {"radiostatus --machine studio"}, NO_ARGS, FOCUS_CONSOLE_START, NO_TIP},
     {"Scripts", {""}, 1, {""}, NO_ARGS, FOCUS_CONSOLE_END, NO_TIP},
     {"Save to flipper sdcard", // keep as last entry or change logic in callback below
      {""},
@@ -295,7 +296,7 @@ const WifiMarauderItem items[NUM_MENU_ITEMS] = {
 /* Only commands supported by our headless ZY-ESP32 hardware profile. */
 static const uint8_t discover_items[] = {1, 6, 8, 20, 21, 22, 3, 4, 2, 19};
 static const uint8_t tools_items[] = {5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 24};
-static const uint8_t device_items[] = {25, 29, 28, 22, 23, 26, 27};
+static const uint8_t device_items[] = {25, 30, 29, 28, 22, 23, 26, 27};
 
 static bool wifi_marauder_command_stops_on_exit(const char* command) {
     if(command == NULL) return false;
@@ -418,6 +419,8 @@ void wifi_marauder_scene_start_on_enter(void* context) {
         uint8_t i = group[row];
         if(strcmp(items[i].actual_commands[0], "diagnostics") == 0 &&
            !atomic_load(&app->board_diagnostics)) continue;
+        if(strcmp(items[i].actual_commands[0], "radiostatus --machine studio") == 0 &&
+           !atomic_load(&app->board_radio)) continue;
         app->menu_map[app->menu_count++] = i;
     }
     if(app->menu_positions[app->menu_group] >= app->menu_count)

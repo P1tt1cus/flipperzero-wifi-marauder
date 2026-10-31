@@ -23,6 +23,9 @@ Open **Apps → GPIO → Marauder Studio**. This is a separate FAP; the original
 - **Tools:** additional upstream commands.
 - **Scripts:** the existing workflow editor and runner.
 - **Device → Check link:** requests a version/profile reply and shows a readable summary.
+- **Device → Radio profile:** appears after Studio firmware advertises `radio-au`.
+  Shows the driver-reported country, allowed channels, current channel, TX power
+  and error codes. Use Up/Down to scroll. This query does not start Wi-Fi.
 - **Device → Diagnostics:** appears after Check link confirms support in Studio firmware;
   reports chip, flash, memory, reset and scan state. Scroll for the full report.
 - **Settings:** immediate log/capture saving toggles and control/board notes.
@@ -84,6 +87,20 @@ cannot enable it. Each link attempt clears old diagnostics capability state.
 Hardware filtering is specific to our board; this build is not a generic
 auto-configuring companion for other ESP32 boards.
 
+## Australian radio reporting (1.3)
+
+Check link and Radio profile distinguish the requested AU profile from live
+driver readings. A stopped radio displays **WiFi off / not live**, with unavailable
+channel/power values. **AU radio confirmed** requires an active radio with AU,
+manual country policy, channels 1–13, a valid current channel and a driver power
+ceiling of 20 dBm or less. Invalid/missing fields never count as confirmation.
+The displayed TX maximum is the driver setting, not a measurement of radiated
+power. Radio queries use a ten-second timeout and support hold-OK retry.
+Legacy firmware keeps Radio profile hidden. Every Check link resets capabilities.
+
+Version 1.3 is built and host-tested; installation and live AU reporting checks
+are pending direct USB access to the ESP32.
+
 ## Build and checks
 
 Target: Flipper f7, API **87.1**, matching Qwerty's Momentum build `d3f89dfe`.
@@ -94,6 +111,7 @@ uv tool run --from ufbt ufbt update --hw-target f7 --url https://github.com/Next
 uv tool run --from ufbt ufbt
 python3 tests/test_terminal.py
 python3 tests/test_studio_view.py
+python3 tests/test_radio_report.py
 ```
 
 Output: `dist/marauder_studio.fap`. Host tests use AddressSanitizer and

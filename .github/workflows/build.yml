@@ -19,6 +19,7 @@ jobs:
         run: |
           python3 tests/test_terminal.py
           python3 tests/test_studio_view.py
+          python3 tests/test_radio_report.py
       - name: Install pinned build tooling and matching SDK
         run: |
           python -m pip install ufbt==0.2.6
