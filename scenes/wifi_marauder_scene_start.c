@@ -345,7 +345,7 @@ const WifiMarauderItem items[NUM_MENU_ITEMS] = {
      NO_TIP},
     {"Shutdown WiFi", {""}, 1, {"stopscan -f"}, NO_ARGS, FOCUS_CONSOLE_START, NO_TIP},
     {"List SD", {""}, 1, {"ls /"}, INPUT_ARGS, FOCUS_CONSOLE_END, NO_TIP},
-    {"Protocol Info", {""}, 1, {"protocolinfo"}, NO_ARGS, FOCUS_CONSOLE_START, NO_TIP},
+    {"Protocol Info", {""}, 1, {"protocolinfo --machine studio"}, NO_ARGS, FOCUS_CONSOLE_START, NO_TIP},
     {"Update", {"sd"}, 1, {"update -s"}, NO_ARGS, FOCUS_CONSOLE_END, NO_TIP},
     {"Reboot", {""}, 1, {"reboot"}, NO_ARGS, FOCUS_CONSOLE_END, NO_TIP},
     {"Help", {""}, 1, {"help"}, NO_ARGS, FOCUS_CONSOLE_START, SHOW_STOPSCAN_TIP},
@@ -366,6 +366,11 @@ const WifiMarauderItem items[NUM_MENU_ITEMS] = {
      FOCUS_CONSOLE_START,
      NO_TIP},
 };
+
+/* Explicit groups retain upstream commands while making common tasks reachable. */
+static const uint8_t discover_items[] = {1, 6, 8, 25, 26, 27, 3, 4, 2, 24};
+static const uint8_t tools_items[] = {5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 20, 21, 22, 23, 34};
+static const uint8_t device_items[] = {36, 40, 27, 33, 28, 35, 41, 38, 37, 39};
 
 static bool wifi_marauder_command_stops_on_exit(const char* command) {
     if(command == NULL) return false;
@@ -392,7 +397,9 @@ static void wifi_marauder_scene_start_var_list_enter_callback(void* context, uin
     furi_assert(context);
     WifiMarauderApp* app = context;
 
-    furi_assert(index < NUM_MENU_ITEMS);
+    furi_assert(index < app->menu_count);
+    app->menu_positions[app->menu_group] = index;
+    index = app->menu_map[index];
     const WifiMarauderItem* item = &items[index];
 
     const int selected_option_index = app->selected_option_index[index];
@@ -463,6 +470,8 @@ static void wifi_marauder_scene_start_var_list_change_callback(VariableItem* ite
     WifiMarauderApp* app = variable_item_get_context(item);
     furi_assert(app);
 
+    uint8_t row = variable_item_list_get_selected_item_index(app->var_item_list);
+    app->selected_menu_index = app->menu_map[row];
     const WifiMarauderItem* menu_item = &items[app->selected_menu_index];
     uint8_t item_index = variable_item_get_current_value_index(item);
     furi_assert(item_index < menu_item->num_options_menu);
@@ -477,28 +486,27 @@ void wifi_marauder_scene_start_on_enter(void* context) {
     variable_item_list_set_enter_callback(
         var_item_list, wifi_marauder_scene_start_var_list_enter_callback, app);
 
-    VariableItem* item;
-    for(int i = 0; i < NUM_MENU_ITEMS; ++i) {
-        item = variable_item_list_add(
+    const uint8_t* group = app->menu_group == 0 ? discover_items :
+                           app->menu_group == 1 ? tools_items : device_items;
+    app->menu_count = app->menu_group == 0 ? COUNT_OF(discover_items) :
+                      app->menu_group == 1 ? COUNT_OF(tools_items) : COUNT_OF(device_items);
+    memcpy(app->menu_map, group, app->menu_count);
+    for(uint8_t row = 0; row < app->menu_count; row++) {
+        uint8_t i = app->menu_map[row];
+        VariableItem* item = variable_item_list_add(
             var_item_list,
-            items[i].item_string,
+            i == 36 ? "Check link" : items[i].item_string,
             items[i].num_options_menu,
             wifi_marauder_scene_start_var_list_change_callback,
             app);
         variable_item_set_current_value_index(item, app->selected_option_index[i]);
-        variable_item_set_current_value_text(
-            item, items[i].options_menu[app->selected_option_index[i]]);
+        variable_item_set_current_value_text(item, items[i].options_menu[app->selected_option_index[i]]);
     }
-
-    variable_item_list_set_selected_item(
-        var_item_list, scene_manager_get_scene_state(app->scene_manager, WifiMarauderSceneStart));
+    variable_item_list_set_selected_item(var_item_list, app->menu_positions[app->menu_group]);
 
     view_dispatcher_switch_to_view(app->view_dispatcher, WifiMarauderAppViewVarItemList);
 
-    // Wait, if the user hasn't initialized sdcard settings, let's prompt them once (then come back here)
-    if(app->need_to_prompt_settings_init) {
-        scene_manager_next_scene(app->scene_manager, WifiMarauderSceneSettingsInit);
-    }
+
 }
 
 bool wifi_marauder_scene_start_on_event(void* context, SceneManagerEvent event) {
@@ -534,11 +542,12 @@ bool wifi_marauder_scene_start_on_event(void* context, SceneManagerEvent event) 
         }
         consumed = true;
     } else if(event.type == SceneManagerEventTypeTick) {
-        app->selected_menu_index = variable_item_list_get_selected_item_index(app->var_item_list);
+        uint8_t row = variable_item_list_get_selected_item_index(app->var_item_list);
+        app->menu_positions[app->menu_group] = row;
+        app->selected_menu_index = app->menu_map[row];
         consumed = true;
     } else if(event.type == SceneManagerEventTypeBack) {
-        scene_manager_stop(app->scene_manager);
-        view_dispatcher_stop(app->view_dispatcher);
+        scene_manager_previous_scene(app->scene_manager);
         consumed = true;
     }
 

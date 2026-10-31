@@ -22,8 +22,13 @@ static void wifi_marauder_app_tick_event_callback(void* context) {
     scene_manager_handle_tick_event(app->scene_manager);
 }
 
+static void studio_home_select(uint32_t index, void* context) {
+    WifiMarauderApp* app = context;
+    view_dispatcher_send_custom_event(app->view_dispatcher, 100 + index);
+}
+
 WifiMarauderApp* wifi_marauder_app_alloc() {
-    WifiMarauderApp* app = malloc(sizeof(WifiMarauderApp));
+    WifiMarauderApp* app = calloc(1, sizeof(WifiMarauderApp));
 
     app->gui = furi_record_open(RECORD_GUI);
     app->dialogs = furi_record_open(RECORD_DIALOGS);
@@ -35,7 +40,6 @@ WifiMarauderApp* wifi_marauder_app_alloc() {
 
     app->view_dispatcher = view_dispatcher_alloc();
     app->scene_manager = scene_manager_alloc(&wifi_marauder_scene_handlers, app);
-    view_dispatcher_enable_queue(app->view_dispatcher);
     view_dispatcher_set_event_callback_context(app->view_dispatcher, app);
 
     view_dispatcher_set_custom_event_callback(
@@ -59,10 +63,11 @@ WifiMarauderApp* wifi_marauder_app_alloc() {
 
     app->special_case_input_step = 0;
 
-    app->text_box = text_box_alloc();
+    app->studio = studio_view_alloc(studio_home_select, app);
     view_dispatcher_add_view(
-        app->view_dispatcher, WifiMarauderAppViewConsoleOutput, text_box_get_view(app->text_box));
+        app->view_dispatcher, WifiMarauderAppViewConsoleOutput, studio_view_get_view(app->studio));
     app->text_box_store = furi_string_alloc();
+    app->file_view_store = furi_string_alloc();
     furi_string_reserve(app->text_box_store, WIFI_MARAUDER_TEXT_BOX_STORE_SIZE);
 
     app->text_input = wifi_text_input_alloc();
@@ -87,7 +92,6 @@ WifiMarauderApp* wifi_marauder_app_alloc() {
     view_dispatcher_add_view(
         app->view_dispatcher, WifiMarauderAppViewSubmenu, submenu_get_view(app->submenu));
 
-    scene_manager_next_scene(app->scene_manager, WifiMarauderSceneStart);
 
     return app;
 }
@@ -126,7 +130,7 @@ void wifi_marauder_load_settings(WifiMarauderApp* app) {
            SAVE_PCAP_SETTING_FILEPATH,
            FSAM_READ,
            FSOM_OPEN_EXISTING)) {
-        char ok[1];
+        char ok[1] = {0};
         storage_file_read(app->save_pcap_setting_file, ok, sizeof(ok));
         app->ok_to_save_pcaps = ok[0] == 'Y';
     }
@@ -137,7 +141,7 @@ void wifi_marauder_load_settings(WifiMarauderApp* app) {
            SAVE_LOGS_SETTING_FILEPATH,
            FSAM_READ,
            FSOM_OPEN_EXISTING)) {
-        char ok[1];
+        char ok[1] = {0};
         storage_file_read(app->save_logs_setting_file, ok, sizeof(ok));
         app->ok_to_save_logs = ok[0] == 'Y';
     }
@@ -147,6 +151,9 @@ void wifi_marauder_load_settings(WifiMarauderApp* app) {
 void wifi_marauder_app_free(WifiMarauderApp* app) {
     furi_assert(app);
 
+    // Stop IRQs and join RX before destroying any callback targets.
+    if(app->uart) wifi_marauder_uart_free(app->uart);
+
     // Views
     view_dispatcher_remove_view(app->view_dispatcher, WifiMarauderAppViewVarItemList);
     view_dispatcher_remove_view(app->view_dispatcher, WifiMarauderAppViewConsoleOutput);
@@ -155,8 +162,9 @@ void wifi_marauder_app_free(WifiMarauderApp* app) {
     view_dispatcher_remove_view(app->view_dispatcher, WifiMarauderAppViewSubmenu);
 
     widget_free(app->widget);
-    text_box_free(app->text_box);
+    studio_view_free(app->studio);
     furi_string_free(app->text_box_store);
+    furi_string_free(app->file_view_store);
     wifi_text_input_free(app->text_input);
     submenu_free(app->submenu);
     variable_item_list_free(app->var_item_list);
@@ -168,8 +176,6 @@ void wifi_marauder_app_free(WifiMarauderApp* app) {
     // View dispatcher
     view_dispatcher_free(app->view_dispatcher);
     scene_manager_free(app->scene_manager);
-
-    wifi_marauder_uart_free(app->uart);
 
     // Close records
     furi_record_close(RECORD_GUI);
@@ -200,7 +206,14 @@ int32_t wifi_marauder_app(void* p) {
 
     wifi_marauder_app->uart = wifi_marauder_usart_init(wifi_marauder_app);
 
-    view_dispatcher_run(wifi_marauder_app->view_dispatcher);
+    int32_t result = 0;
+    if(wifi_marauder_app->uart) {
+        scene_manager_next_scene(wifi_marauder_app->scene_manager, WifiMarauderSceneHome);
+        view_dispatcher_run(wifi_marauder_app->view_dispatcher);
+    } else {
+        dialog_message_show_storage_error(wifi_marauder_app->dialogs, "UART is busy.\nClose other GPIO apps.");
+        result = 1;
+    }
 
     wifi_marauder_app_free(wifi_marauder_app);
 
@@ -212,5 +225,5 @@ int32_t wifi_marauder_app(void* p) {
     expansion_enable(expansion);
     furi_record_close(RECORD_EXPANSION);
 
-    return 0;
+    return result;
 }

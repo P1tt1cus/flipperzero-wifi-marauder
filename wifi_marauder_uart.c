@@ -6,6 +6,7 @@
 
 struct WifiMarauderUart {
     WifiMarauderApp* app;
+    FuriMutex* callback_mutex;
     FuriThread* rx_thread;
     FuriStreamBuffer* rx_stream;
     FuriStreamBuffer* pcap_stream;
@@ -28,14 +29,18 @@ void wifi_marauder_uart_set_handle_rx_data_cb(
     WifiMarauderUart* uart,
     void (*handle_rx_data_cb)(uint8_t* buf, size_t len, void* context)) {
     furi_assert(uart);
+    furi_mutex_acquire(uart->callback_mutex, FuriWaitForever);
     uart->handle_rx_data_cb = handle_rx_data_cb;
+    furi_mutex_release(uart->callback_mutex);
 }
 
 void wifi_marauder_uart_set_handle_rx_pcap_cb(
     WifiMarauderUart* uart,
     void (*handle_rx_pcap_cb)(uint8_t* buf, size_t len, void* context)) {
     furi_assert(uart);
+    furi_mutex_acquire(uart->callback_mutex, FuriWaitForever);
     uart->handle_rx_pcap_cb = handle_rx_pcap_cb;
+    furi_mutex_release(uart->callback_mutex);
 }
 
 #define WORKER_ALL_RX_EVENTS (WorkerEvtStop | WorkerEvtRxDone | WorkerEvtPcapDone)
@@ -114,14 +119,18 @@ static int32_t uart_worker(void* context) {
         if(events & WorkerEvtRxDone) {
             size_t len = furi_stream_buffer_receive(uart->rx_stream, uart->rx_buf, RX_BUF_SIZE, 0);
             if(len > 0) {
+                furi_mutex_acquire(uart->callback_mutex, FuriWaitForever);
                 if(uart->handle_rx_data_cb) uart->handle_rx_data_cb(uart->rx_buf, len, uart->app);
+                furi_mutex_release(uart->callback_mutex);
             }
         }
         if(events & WorkerEvtPcapDone) {
             size_t len =
                 furi_stream_buffer_receive(uart->pcap_stream, uart->rx_buf, RX_BUF_SIZE, 0);
             if(len > 0) {
+                furi_mutex_acquire(uart->callback_mutex, FuriWaitForever);
                 if(uart->handle_rx_pcap_cb) uart->handle_rx_pcap_cb(uart->rx_buf, len, uart->app);
+                furi_mutex_release(uart->callback_mutex);
             }
         }
     }
@@ -140,19 +149,21 @@ WifiMarauderUart* wifi_marauder_uart_init(
     WifiMarauderApp* app,
     FuriHalSerialId channel,
     const char* thread_name) {
-    WifiMarauderUart* uart = malloc(sizeof(WifiMarauderUart));
+    FuriHalSerialHandle* serial_handle = furi_hal_serial_control_acquire(channel);
+    if(!serial_handle) return NULL;
+    WifiMarauderUart* uart = calloc(1, sizeof(WifiMarauderUart));
+    uart->callback_mutex = furi_mutex_alloc(FuriMutexTypeNormal);
 
     uart->app = app;
     uart->rx_stream = furi_stream_buffer_alloc(RX_BUF_SIZE, 1);
     uart->pcap_stream = furi_stream_buffer_alloc(RX_BUF_SIZE, 1);
     uart->rx_thread = furi_thread_alloc();
     furi_thread_set_name(uart->rx_thread, thread_name);
-    furi_thread_set_stack_size(uart->rx_thread, 1024);
+    furi_thread_set_stack_size(uart->rx_thread, 3072);
     furi_thread_set_context(uart->rx_thread, uart);
     furi_thread_set_callback(uart->rx_thread, uart_worker);
     furi_thread_start(uart->rx_thread);
-    uart->serial_handle = furi_hal_serial_control_acquire(channel);
-    furi_check(uart->serial_handle);
+    uart->serial_handle = serial_handle;
     furi_hal_serial_init(uart->serial_handle, BAUDRATE);
     furi_hal_serial_async_rx_start(uart->serial_handle, wifi_marauder_uart_on_irq_cb, uart, false);
 
@@ -166,11 +177,13 @@ WifiMarauderUart* wifi_marauder_usart_init(WifiMarauderApp* app) {
 void wifi_marauder_uart_free(WifiMarauderUart* uart) {
     furi_assert(uart);
 
+    furi_hal_serial_async_rx_stop(uart->serial_handle);
+    furi_hal_serial_deinit(uart->serial_handle);
     furi_thread_flags_set(furi_thread_get_id(uart->rx_thread), WorkerEvtStop);
     furi_thread_join(uart->rx_thread);
     furi_thread_free(uart->rx_thread);
 
-    furi_hal_serial_deinit(uart->serial_handle);
+    furi_mutex_free(uart->callback_mutex);
     furi_hal_serial_control_release(uart->serial_handle);
 
     free(uart);

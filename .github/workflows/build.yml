@@ -1,42 +1,30 @@
-name: "FAP Build"
+name: Marauder Studio
 on:
   push:
-    branches:
-      - feature_wifi_marauder_app
+    branches: [studio]
   pull_request:
-  schedule:
-    # do a build every day
-    - cron: "1 1 * * *"
+    branches: [studio]
+  workflow_dispatch:
+permissions:
+  contents: read
 jobs:
-  ufbt-build-action:
+  companion:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - name: dev channel
-            sdk-channel: dev
-          - name: release channel
-            sdk-channel: release
-          - name: Unleashed dev
-            sdk-index-url: https://up.unleashedflip.com/directory.json
-            sdk-channel: dev
-          - name: Unleashed release
-            sdk-index-url: https://up.unleashedflip.com/directory.json
-            sdk-channel: release
-    name: 'ufbt: Build for ${{ matrix.name }}'
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          submodules: recursive
-      - name: Build with ufbt
-        uses: flipperdevices/flipperzero-ufbt-action@v0.1.2
-        id: build-app
+          python-version: '3.11'
+      - name: Test terminal and protocol parsing with sanitizers
+        run: python3 tests/test_terminal.py
+      - name: Install pinned build tooling and matching SDK
+        run: |
+          python -m pip install ufbt==0.2.6
+          ufbt update --hw-target f7 --url https://github.com/Next-Flip/Momentum-Firmware/releases/download/mntm-012/flipper-z-f7-sdk-mntm-012.zip
+      - name: Build for API 87.1
+        run: ufbt
+      - uses: actions/upload-artifact@v4
         with:
-          sdk-channel: ${{ matrix.sdk-channel }}
-          sdk-index-url: ${{ matrix.sdk-index-url }}
-      - name: Upload app artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ github.event.repository.name }}-${{ steps.build-app.outputs.suffix }}
-          path: ${{ steps.build-app.outputs.fap-artifacts }}
+          name: marauder-studio-f7-api87.1
+          path: dist/marauder_studio.fap
+          if-no-files-found: error

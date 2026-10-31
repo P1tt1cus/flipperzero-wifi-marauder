@@ -13,7 +13,9 @@
 #include "script/wifi_marauder_script_executor.h"
 #include "script/menu/wifi_marauder_script_stage_menu.h"
 
+#include <stdatomic.h>
 #include <gui/gui.h>
+#include "studio/studio_view.h"
 #include <gui/view_dispatcher.h>
 #include <gui/scene_manager.h>
 #include <gui/modules/text_box.h>
@@ -22,7 +24,7 @@
 #include <gui/modules/widget.h>
 #include "wifi_marauder_text_input.h"
 
-#include <esp32_wifi_marauder_icons.h>
+#include <marauder_studio_icons.h>
 #include <storage/storage.h>
 #include <lib/toolbox/path.h>
 #include <dialogs/dialogs.h>
@@ -58,13 +60,24 @@ struct WifiMarauderApp {
 
     char text_input_store[WIFI_MARAUDER_TEXT_INPUT_STORE_SIZE + 1];
     FuriString* text_box_store;
+    FuriString* file_view_store;
     size_t text_box_store_strlen;
-    TextBox* text_box;
+    StudioView* studio;
+    uint8_t home_index;
+    uint8_t menu_group;
+    uint8_t menu_map[NUM_MENU_ITEMS];
+    uint8_t menu_count;
+    uint8_t menu_positions[3];
+    uint32_t console_started;
+    atomic_bool storage_error;
+    bool link_summary_shown;
+    bool browse_selected_log;
+    char session_path[256];
     WIFI_TextInput* text_input;
     Storage* storage;
     File* capture_file;
     File* log_file;
-    char log_file_path[100];
+    char log_file_path[256];
     File* save_pcap_setting_file;
     File* save_logs_setting_file;
     bool need_to_prompt_settings_init;
@@ -89,8 +102,8 @@ struct WifiMarauderApp {
     bool focus_console_start;
     bool show_stopscan_tip;
     bool stop_on_exit;
-    bool is_writing_pcap;
-    bool is_writing_log;
+    atomic_bool is_writing_pcap;
+    atomic_bool is_writing_log;
 
     // User input
     WifiMarauderUserInputType user_input_type;

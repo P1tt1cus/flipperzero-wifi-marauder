@@ -1,4 +1,5 @@
 #include "../wifi_marauder_app_i.h"
+#include "../studio/link_report.h"
 
 char* _wifi_marauder_get_prefix_from_cmd(const char* command) {
     int end = strcspn(command, " ");
@@ -45,7 +46,10 @@ void wifi_marauder_console_output_handle_rx_data_cb(uint8_t* buf, size_t len, vo
 
     if(app->is_writing_log) {
         app->has_saved_logs_this_session = true;
-        storage_file_write(app->log_file, buf, len);
+        if(storage_file_write(app->log_file, buf, len) != len) {
+            app->storage_error = true;
+            app->is_writing_log = false;
+        }
     }
 
     // If text box store gets too big, then truncate it
@@ -58,74 +62,58 @@ void wifi_marauder_console_output_handle_rx_data_cb(uint8_t* buf, size_t len, vo
     // Null-terminate buf and append to text box store
     buf[len] = '\0';
     furi_string_cat_printf(app->text_box_store, "%s", buf);
-    view_dispatcher_send_custom_event(app->view_dispatcher, WifiMarauderEventRefreshConsoleOutput);
+    if(!app->link_summary_shown) studio_view_feed(app->studio, buf, len);
+    if(!app->link_summary_shown && app->selected_tx_string &&
+       strcmp(app->selected_tx_string, "protocolinfo --machine studio") == 0) {
+        char report[128];
+        if(studio_link_report(furi_string_get_cstr(app->text_box_store), report, sizeof(report))) {
+            studio_view_report(app->studio, report);
+            app->link_summary_shown = true;
+        }
+    }
 }
 
 void wifi_marauder_console_output_handle_rx_packets_cb(uint8_t* buf, size_t len, void* context) {
     furi_assert(context);
     WifiMarauderApp* app = context;
 
+    studio_view_capture(app->studio, len);
     if(app->is_writing_pcap) {
-        storage_file_write(app->capture_file, buf, len);
+        if(storage_file_write(app->capture_file, buf, len) != len) {
+            app->storage_error = true;
+            app->is_writing_pcap = false;
+        }
     }
 }
 
 void wifi_marauder_scene_console_output_on_enter(void* context) {
     WifiMarauderApp* app = context;
 
-    // Reset text box and set font
-    TextBox* text_box = app->text_box;
-    text_box_reset(text_box);
-    text_box_set_font(text_box, TextBoxFontText);
-
-    // Set focus on start or end
-    if(app->focus_console_start) {
-        text_box_set_focus(text_box, TextBoxFocusStart);
-    } else {
-        text_box_set_focus(text_box, TextBoxFocusEnd);
-    }
-
-    // Set command-related messages
-    if(app->is_command) {
+    app->storage_error = false;
+    app->link_summary_shown = false;
+    app->console_started = furi_get_tick();
+    studio_view_console(app->studio,
+        app->script ? app->script->name : (app->selected_tx_string && strcmp(app->selected_tx_string, "protocolinfo --machine studio") == 0 ? "Check link" : (app->selected_tx_string ? app->selected_tx_string : "Console")),
+        !app->focus_console_start, app->stop_on_exit || app->script != NULL);
+    if(app->is_command || app->script) {
         furi_string_reset(app->text_box_store);
         app->text_box_store_strlen = 0;
-        // Help message
-        if(0 == strncmp("help", app->selected_tx_string, strlen("help"))) {
-            const char* help_msg = "Marauder companion " WIFI_MARAUDER_APP_VERSION "\n";
-            furi_string_cat_str(app->text_box_store, help_msg);
-            app->text_box_store_strlen += strlen(help_msg);
-        }
-        // Stopscan message
-        if(app->stop_on_exit) {
-            const char* help_msg = "Press BACK to send stopscan\n";
-            furi_string_cat_str(app->text_box_store, help_msg);
-            app->text_box_store_strlen += strlen(help_msg);
-        }
+    } else if(!furi_string_empty(app->text_box_store)) {
+        studio_view_feed(app->studio, (const uint8_t*)furi_string_get_cstr(app->text_box_store), furi_string_size(app->text_box_store));
     }
-
-    // Set starting text
-    text_box_set_text(app->text_box, furi_string_get_cstr(app->text_box_store));
 
     // Set scene state and switch view
     scene_manager_set_scene_state(app->scene_manager, WifiMarauderSceneConsoleOutput, 0);
     view_dispatcher_switch_to_view(app->view_dispatcher, WifiMarauderAppViewConsoleOutput);
 
-    // Register callbacks to receive data
-    wifi_marauder_uart_set_handle_rx_data_cb(
-        app->uart,
-        wifi_marauder_console_output_handle_rx_data_cb); // setup callback for general log rx thread
-    wifi_marauder_uart_set_handle_rx_pcap_cb(
-        app->uart,
-        wifi_marauder_console_output_handle_rx_packets_cb); // setup callback for packets rx thread
-
     // Get ready to send command
     if((app->is_command && app->selected_tx_string) || app->script) {
         char* prefix_buf = NULL;
-        if(strlen(app->selected_tx_string) > 0) {
+        if(app->selected_tx_string && strlen(app->selected_tx_string) > 0) {
             prefix_buf = _wifi_marauder_get_prefix_from_cmd(app->selected_tx_string);
         }
         const char* prefix = prefix_buf ? prefix_buf : // Function name
-                                          app->script->name; // Script name
+                                          (app->script ? app->script->name : "session"); // Script name
 
         // Create files *before* sending command
         // (it takes time to iterate through the directory)
@@ -175,6 +163,10 @@ void wifi_marauder_scene_console_output_on_enter(void* context) {
             send_html = wifi_marauder_ep_read_html_file(app, &the_html, &html_size);
         }
 
+        // Files and view are ready before the worker is allowed to receive.
+        wifi_marauder_uart_set_handle_rx_data_cb(app->uart, wifi_marauder_console_output_handle_rx_data_cb);
+        wifi_marauder_uart_set_handle_rx_pcap_cb(app->uart, wifi_marauder_console_output_handle_rx_packets_cb);
+
         // Send command with newline '\n'
         if(app->selected_tx_string) {
             if(app->script == NULL) {
@@ -215,9 +207,11 @@ bool wifi_marauder_scene_console_output_on_event(void* context, SceneManagerEven
     bool consumed = false;
 
     if(event.type == SceneManagerEventTypeCustom) {
-        text_box_set_text(app->text_box, furi_string_get_cstr(app->text_box_store));
+        consumed = true;
         consumed = true;
     } else if(event.type == SceneManagerEventTypeTick) {
+        studio_view_status(app->studio, (furi_get_tick() - app->console_started) / furi_kernel_get_tick_frequency(),
+            app->is_writing_log, app->is_writing_pcap, app->storage_error);
         consumed = true;
     }
 
