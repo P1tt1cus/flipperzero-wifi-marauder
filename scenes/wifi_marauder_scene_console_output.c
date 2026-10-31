@@ -66,11 +66,21 @@ void wifi_marauder_console_output_handle_rx_data_cb(uint8_t* buf, size_t len, vo
         wifi_marauder_note_reply(app);
     if(!app->link_summary_shown && app->selected_tx_string &&
        strcmp(app->selected_tx_string, "protocolinfo --machine studio") == 0) {
-        char report[128];
-        bool diagnostics;
-        if(studio_link_report_with_features(
-               furi_string_get_cstr(app->text_box_store), report, sizeof(report), &diagnostics)) {
+        char report[512];
+        bool diagnostics, radio;
+        if(studio_link_report_full(
+               furi_string_get_cstr(app->text_box_store), report, sizeof(report), &diagnostics, &radio)) {
             atomic_store(&app->board_diagnostics, diagnostics);
+            atomic_store(&app->board_radio, radio);
+            studio_view_report(app->studio, report);
+            wifi_marauder_note_reply(app);
+            studio_view_link_verified(app->studio, wifi_marauder_now_ms());
+            app->link_summary_shown = true;
+        }
+    } else if(!app->link_summary_shown && app->selected_tx_string &&
+              strcmp(app->selected_tx_string, "radiostatus --machine studio") == 0) {
+        char report[512];
+        if(studio_radio_report(furi_string_get_cstr(app->text_box_store), report, sizeof(report))) {
             studio_view_report(app->studio, report);
             wifi_marauder_note_reply(app);
             studio_view_link_verified(app->studio, wifi_marauder_now_ms());
@@ -100,7 +110,7 @@ void wifi_marauder_scene_console_output_on_enter(void* context) {
     app->link_summary_shown = false;
     app->console_started = wifi_marauder_now_ms();
     studio_view_console(app->studio,
-        app->script ? app->script->name : (app->selected_tx_string && strcmp(app->selected_tx_string, "protocolinfo --machine studio") == 0 ? "Check link" : (app->selected_tx_string ? app->selected_tx_string : "Console")),
+        app->script ? app->script->name : (app->selected_tx_string && strcmp(app->selected_tx_string, "protocolinfo --machine studio") == 0 ? "Check link" : (app->selected_tx_string && strcmp(app->selected_tx_string, "radiostatus --machine studio") == 0 ? "Radio profile" : (app->selected_tx_string ? app->selected_tx_string : "Console"))),
         !app->focus_console_start, app->stop_on_exit || app->script != NULL);
     studio_view_command(app->studio, NULL, false, false, app->console_started);
     wifi_marauder_show_reply_age(app);
@@ -177,7 +187,10 @@ void wifi_marauder_scene_console_output_on_enter(void* context) {
         studio_view_command(app->studio, app->selected_tx_string, app->stop_on_exit,
                             app->script != NULL, app->console_started);
         if(app->selected_tx_string && strcmp(app->selected_tx_string, "protocolinfo --machine studio") == 0)
+        {
             atomic_store(&app->board_diagnostics, false);
+            atomic_store(&app->board_radio, false);
+        }
 
         // Files and view are ready before the worker is allowed to receive.
         wifi_marauder_uart_set_handle_rx_data_cb(app->uart, wifi_marauder_console_output_handle_rx_data_cb);

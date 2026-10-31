@@ -26,6 +26,11 @@ static void test_command_status(void) {
     studio_command_reply(&s, 10200, true); /* validated late link reply */
     assert(studio_command_state(&s, 500000) == StudioCommandDone);
 
+    studio_command_begin(&s, "radiostatus --machine studio", false, false, 0);
+    assert(!response(&s, "#radiostatus --machine studio\n> ", 100));
+    assert(studio_command_state(&s, 10000) == StudioCommandTimeout);
+    assert(studio_command_can_retry(&s));
+
     studio_command_begin(&s, "list -b", false, false, 0);
     assert(!response(&s, "> #list -b\r\n>", 100));
     assert(!s.complete);
@@ -186,7 +191,7 @@ int main(void) {
         for(size_t k = 0; k < j; k++) assert(groups[g][k] != groups[g][j]);
     }
     assert(!strcmp(items[device_items[0]].actual_commands[0], "protocolinfo --machine studio"));
-    assert(!strcmp(items[device_items[1]].actual_commands[0], "diagnostics"));
+    assert(!strcmp(items[device_items[2]].actual_commands[0], "diagnostics"));
     puts("PASS: command deadlines, retry policy, quiet scans, late replies, link response validation, wrapping, fragmented ANSI/OSC, CRLF, backspace, ring eviction, binary noise");
 }
 '''

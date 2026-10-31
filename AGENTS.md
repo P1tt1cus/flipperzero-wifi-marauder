@@ -33,3 +33,11 @@ an exact allowlist of read-only queries or switches to Check link. It never
 replays scripts or mutations. Silence is not proof of completion/disconnection.
 The query prompt heuristic applies only to synchronous allowlisted commands.
 The installed v1.20.0 firmware lacks UART completion messages for some scans.
+
+## Australian radio status (Studio 1.3)
+
+Device → Radio profile requires the `radio-au` capability from our profile.
+Read-only machine reports validate actual country, channel range/current channel,
+TX maximum and errors; an inactive radio is not AU-confirmed. Run
+`python3 tests/test_radio_report.py` along with existing checks. See ReadMe.md for
+installed hashes and hardware evidence. ESP32 AU firmware remains unflashed.
