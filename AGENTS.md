@@ -52,3 +52,9 @@ the previously opened file/page; selecting a new log resets to page one and
 returns to the existing viewer scene. Run `python3 tests/test_session_browser.py`
 alongside the other host checks and API 87.1 build. Read the README for the
 reported freeze, physical recovery and scope of on-device verification.
+
+## Echo Radio (1.5)
+
+The visible name is Echo Radio; preserve the `marauder_studio` app ID and existing
+data/protocol paths. The `sessions` launch argument opens Sessions and skips the
+automatic board query. Check normal Radio startup separately when validating.
